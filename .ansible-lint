@@ -1,0 +1,30 @@
+---
+profile: basic
+
+skip_list:
+  # Bu repo bilinçli olarak kısa modül adları (command/apt/debug vb.) ve Türkçe,
+  # küçük harfle başlayan görev isimleri kullanıyor; FQCN + isim büyük harfi
+  # kuralları tüm playbook'lara (150+ satır) dokunmayı gerektirir, okunabilirlik
+  # tercihi bozulmasın diye atlandı.
+  - fqcn[action-core]
+  - name[casing]
+  - name[template]
+  # Shell pipe'larına set -o pipefail eklemek bazı görevlerde (ör. grep -m1 ile
+  # kasıtlı olarak "bulunamadı" durumunu rc=1 bırakan komutlar) davranışı
+  # değiştirebilir; toptan eklemek yerine bilinçli olarak atlandı.
+  - risky-shell-pipe
+  # ignore_errors: true bu repoda bilinçli bir desen: bir aracın/servisin kurulu
+  # olmaması playbook'u durdurmamalı, sadece raporda "bulunamadı" göstermeli.
+  - ignore-errors
+  # containerd için "latest" bilinçli bir tercih (k8s sürümüyle sıkı versiyon
+  # eşleşmesi gerekmiyor); gerekçesi docs/06_update_k8s_services.md içinde.
+  - package-latest
+  # "systemctl --failed" ile TÜM başarısız servisleri listelemenin doğrudan bir
+  # modül karşılığı yok (systemd modülü tek bir servisi yönetmek için).
+  - command-instead-of-module
+  # run_once burada strategy: linear (varsayılan) ile kullanılıyor, free ile
+  # kullanılmıyor; uyarı bu repo için geçerli değil.
+  - run-once[task]
+
+exclude_paths:
+  - .github/

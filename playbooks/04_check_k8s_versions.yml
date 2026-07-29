@@ -1,0 +1,22 @@
+---
+- name: Kubernetes Stack Sürüm Raporu
+  hosts: all
+  gather_facts: false
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Kubernetes sürümlerini tespit et
+      import_tasks: tasks/k8s_versions.yml
+
+    - name: Sürüm raporu
+      debug:
+        msg:
+          - "kubectl: {{ kubectl_version.stdout | default('kubectl erişimi yok veya sürüm alınamadı') }}"
+          - "kubeadm: {{ kubeadm_version.stdout | default('bulunamadı') }}"
+          - "kubelet: {{ kubelet_version.stdout | default('bulunamadı') }}"
+          - "containerd: {{ containerd_version.stdout | default('bulunamadı') }}"
+          - "runc: {{ runc_version.stdout | default('bulunamadı') }}"
+          - "etcd image: {{ etcd_version.stdout | default('bulunamadı veya kubectl erişimi yok') }}"

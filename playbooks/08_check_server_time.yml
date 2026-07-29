@@ -1,0 +1,45 @@
+---
+- name: Sunucu Zamanı ve Saat Dilimi Raporu
+  hosts: all
+  gather_facts: false
+
+  vars:
+    time_service_patterns:
+      - chrony
+      - systemd-timesyncd
+      - ntpd
+      - ^ntp
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Sistemdeki servisleri keşfet
+      service_facts:
+
+    - name: Zaman senkronizasyon servislerini filtrele
+      set_fact:
+        time_services: "{{ ansible_facts.services.keys() | select('search', time_service_patterns | join('|')) | list }}"
+
+    - name: "Zaman senkronizasyon servis durumu (Çalışma Şartı: ilgili servis bulunmalı)"
+      debug:
+        msg: "{{ item }} -> durum: {{ ansible_facts.services[item].get('state', 'bilinmiyor') }}, açılışta aktif: {{ ansible_facts.services[item].get('status', 'bilinmiyor') }}"
+      loop: "{{ time_services }}"
+      loop_control:
+        label: "{{ item }}"
+      when: time_services | length > 0
+
+    - name: "Zaman senkronizasyon servisi bulunamadı uyarısı (Çalışma Şartı: Hiç servis bulunmamalı)"
+      debug:
+        msg: "Sistemde bilinen bir zaman senkronizasyon servisi (chrony/systemd-timesyncd/ntpd) bulunamadı."
+      when: time_services | length == 0
+
+    - name: Sunucu zamanı ve saat dilimi bilgisi
+      command: timedatectl
+      register: server_time
+      changed_when: false
+
+    - name: Zaman ve saat dilimi raporu
+      debug:
+        msg: "{{ server_time.stdout }}"

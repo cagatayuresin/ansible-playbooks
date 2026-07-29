@@ -1,0 +1,51 @@
+---
+- name: Sunucu Zamanı ve Saat Dilimi Ön Raporu
+  import_playbook: 08_check_server_time.yml
+
+- name: Set Server Timezone to Europe/Istanbul
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Zaman dilimini Europe/Istanbul olarak ayarla
+      become: true
+      community.general.timezone:
+        name: Europe/Istanbul
+      register: timezone_set
+
+    - name: Zaman dilimi ayarlama sonucu
+      debug:
+        msg: "Timezone {{ 'Europe/Istanbul olarak değiştirildi' if timezone_set.changed else 'zaten Europe/Istanbul idi, değişiklik yapılmadı' }}"
+
+    - name: "Zaman senkronizasyon servislerini aktif ve kalıcı hale getir (Çalışma Şartı: 08'de bir zaman servisi bulunmuş olmalı)"
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop: "{{ time_services | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      register: time_service_enable
+      when: time_services is defined and time_services | length > 0
+
+    - name: "Zaman servisi bulunamadı, aktifleştirme atlanıyor (Çalışma Şartı: 08'de hiç zaman servisi bulunmamalı)"
+      debug:
+        msg: "08_check_server_time.yml çalışırken bilinen bir zaman senkronizasyon servisi (chrony/systemd-timesyncd/ntpd) bulunamadığı için aktifleştirme adımı atlandı."
+      when: time_services is not defined or time_services | length == 0
+
+    - name: Zaman senkronizasyon servisi aktifleştirme raporu
+      debug:
+        msg: "{{ item.item }} -> {{ 'başlatıldı/enable edildi' if item.changed else 'zaten aktif ve enabled idi' }}"
+      loop: "{{ time_service_enable.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Güncel zaman ve saat dilimini doğrula
+      command: timedatectl
+      register: server_time_after
+      changed_when: false
+
+    - name: Doğrulama raporu
+      debug:
+        msg: "{{ server_time_after.stdout }}"

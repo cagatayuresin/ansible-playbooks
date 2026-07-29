@@ -1,0 +1,53 @@
+---
+- name: Kubernetes/Container Servis Durumu ve Logları
+  hosts: all
+  gather_facts: false
+
+  vars:
+    k8s_service_patterns:
+      - kube
+      - containerd
+      - calico
+      - etcd
+      - runc
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Sistemdeki tüm servisleri keşfet
+      service_facts:
+
+    - name: Kubernetes/container ile ilgili servisleri filtrele
+      set_fact:
+        k8s_services: "{{ ansible_facts.services.keys() | select('search', k8s_service_patterns | join('|')) | list }}"
+
+    - name: "Servis durum raporu - aktif/enabled (Çalışma Şartı: ilgili servis bulunmalı)"
+      debug:
+        msg: "{{ item }} -> durum: {{ ansible_facts.services[item].get('state', 'bilinmiyor') }}, açılışta aktif: {{ ansible_facts.services[item].get('status', 'bilinmiyor') }}"
+      loop: "{{ k8s_services }}"
+      loop_control:
+        label: "{{ item }}"
+      when: k8s_services | length > 0
+
+    - name: "İlgili servis bulunamadı uyarısı (Çalışma Şartı: Hiç ilgili servis bulunmamalı)"
+      debug:
+        msg: "Sistemde kubernetes/container ile ilgili bir servis bulunamadı."
+      when: k8s_services | length == 0
+
+    - name: Bulunan servislerin son loglarını al
+      command: journalctl -u {{ item }} -n 10 --no-pager
+      register: service_logs
+      loop: "{{ k8s_services }}"
+      loop_control:
+        label: "{{ item }}"
+      ignore_errors: true
+      changed_when: false
+
+    - name: "Servis log raporu (Çalışma Şartı: log kaydı alınabilmeli)"
+      debug:
+        msg: "===== {{ item.item }} son loglar =====\n{{ item.stdout | default('Log alınamadı: ' + (item.stderr | default('bilinmeyen hata'))) }}"
+      loop: "{{ service_logs.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item }}"

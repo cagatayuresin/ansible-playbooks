@@ -1,0 +1,182 @@
+---
+- name: kubeadm kurulu mu kontrol et
+  command: which kubeadm
+  register: kubeadm_present
+  ignore_errors: true
+  changed_when: false
+  check_mode: false
+
+- name: "kubeadm bulunamadı uyarısı (Çalışma Şartı: kubeadm kurulu OLMAMALI)"
+  debug:
+    msg: "Bu host'ta kubeadm bulunamadı, Kubernetes güncelleme adımları atlanıyor."
+  when: kubeadm_present.rc != 0
+
+- name: Kubernetes node güncelleme adımları
+  when: kubeadm_present.rc == 0
+  block:
+    - name: Hedef minor sürümü hesapla (ör. 1.34)
+      set_fact:
+        kube_minor: "{{ kube_version.split('.')[0] }}.{{ kube_version.split('.')[1] }}"
+
+    - name: Güncelleme öncesi sürümleri tespit et
+      import_tasks: k8s_versions.yml
+
+    - name: Güncelleme öncesi sürüm fact'lerini sakla
+      set_fact:
+        kubelet_version_before: "{{ kubelet_version.stdout | default('bilinmiyor') }}"
+        containerd_version_before: "{{ containerd_version.stdout | default('bilinmiyor') }}"
+
+    - name: apt-cache güncelle
+      become: true
+      apt:
+        update_cache: true
+      changed_when: false
+
+    - name: apt-cache ile hedef kubeadm paket sürümünü bul
+      shell: apt-cache madison kubeadm | awk '{print $3}' | grep -m1 -- "^{{ kube_version }}-"
+      register: kubeadm_pkg
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Hedef kubeadm paket sürümü apt reposunda bulunmalı
+      assert:
+        that: kubeadm_pkg.stdout != ""
+        fail_msg: >-
+          kubeadm={{ kube_version }} apt reposunda bulunamadı. Muhtemelen apt reposu
+          (/etc/apt/sources.list.d/kubernetes.list) hâlâ eski bir minor sürüme (ör. v1.33) işaret ediyor.
+          Yeni bir minor sürüme geçiyorsanız önce resmi Kubernetes dokümantasyonuna göre
+          repoyu https://pkgs.k8s.io/core:/stable:/v{{ kube_minor }}/deb/ adresine güncelleyip
+          'apt-get update' çalıştırın, sonra bu playbook'u tekrar deneyin.
+
+    - name: apt-cache ile hedef kubelet paket sürümünü bul
+      shell: apt-cache madison kubelet | awk '{print $3}' | grep -m1 -- "^{{ kube_version }}-"
+      register: kubelet_pkg
+      changed_when: false
+      failed_when: kubelet_pkg.stdout == ""
+      check_mode: false
+
+    - name: apt-cache ile hedef kubectl paket sürümünü bul
+      shell: apt-cache madison kubectl | awk '{print $3}' | grep -m1 -- "^{{ kube_version }}-"
+      register: kubectl_pkg
+      changed_when: false
+      failed_when: kubectl_pkg.stdout == ""
+      check_mode: false
+
+    - name: kubeadm paketinin hold'unu kaldır
+      become: true
+      command: apt-mark unhold kubeadm
+      changed_when: false
+
+    - name: kubeadm'i hedef sürüme güncelle
+      become: true
+      apt:
+        name: "kubeadm={{ kubeadm_pkg.stdout }}"
+        state: present
+        allow_change_held_packages: true
+
+    - name: kubeadm paketini tekrar hold'a al
+      become: true
+      command: apt-mark hold kubeadm
+      changed_when: false
+
+    - name: "kubeadm upgrade plan (Çalışma Şartı: ilk control-plane node olmalı)"
+      become: true
+      command: kubeadm upgrade plan
+      register: kubeadm_plan
+      changed_when: false
+      check_mode: false
+      when: inventory_hostname == first_control_plane
+
+    - name: kubeadm upgrade plan çıktısı
+      debug:
+        msg: "{{ kubeadm_plan.stdout }}"
+      when: inventory_hostname == first_control_plane
+
+    - name: "kubeadm upgrade apply (Çalışma Şartı: ilk control-plane node olmalı)"
+      become: true
+      command: kubeadm upgrade apply v{{ kube_version }} -y
+      changed_when: true
+      when: inventory_hostname == first_control_plane
+
+    - name: "kubeadm upgrade node (Çalışma Şartı: ilk control-plane node OLMAMALI)"
+      become: true
+      command: kubeadm upgrade node
+      changed_when: true
+      when: inventory_hostname != first_control_plane
+
+    - name: Bu node'un kubernetes node adını al
+      command: hostname
+      register: node_hostname
+      changed_when: false
+      check_mode: false
+
+    - name: Node'u drain et
+      become: true
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      command: >-
+        kubectl drain {{ node_hostname.stdout }}
+        --ignore-daemonsets --delete-emptydir-data --force --timeout=120s
+      delegate_to: "{{ first_control_plane }}"
+      changed_when: true
+
+    - name: kubelet ve kubectl paketlerinin hold'unu kaldır
+      become: true
+      command: apt-mark unhold kubelet kubectl
+      changed_when: false
+
+    - name: kubelet ve kubectl'i hedef sürüme güncelle
+      become: true
+      apt:
+        name:
+          - "kubelet={{ kubelet_pkg.stdout }}"
+          - "kubectl={{ kubectl_pkg.stdout }}"
+        state: present
+        allow_change_held_packages: true
+
+    - name: kubelet ve kubectl paketlerini tekrar hold'a al
+      become: true
+      command: apt-mark hold kubelet kubectl
+      changed_when: false
+
+    - name: containerd.io paketi kurulu mu kontrol et
+      command: dpkg -s containerd.io
+      register: containerd_io_installed
+      ignore_errors: true
+      changed_when: false
+      check_mode: false
+
+    - name: containerd paket adını belirle
+      set_fact:
+        containerd_pkg_name: "{{ 'containerd.io' if containerd_io_installed.rc == 0 else 'containerd' }}"
+
+    - name: containerd'i mevcut apt reposundan en güncel sürüme yükselt
+      become: true
+      apt:
+        name: "{{ containerd_pkg_name }}"
+        state: latest
+
+    - name: systemd daemon-reload ve kubelet'i yeniden başlat
+      become: true
+      ansible.builtin.systemd:
+        daemon_reload: true
+        name: kubelet
+        state: restarted
+
+    - name: Node'u uncordon et
+      become: true
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      command: kubectl uncordon {{ node_hostname.stdout }}
+      delegate_to: "{{ first_control_plane }}"
+      changed_when: true
+
+    - name: Güncelleme sonrası sürümleri tespit et
+      import_tasks: k8s_versions.yml
+
+    - name: Node güncelleme raporu
+      debug:
+        msg:
+          - "{{ node_hostname.stdout }} kubelet: {{ kubelet_version_before }} -> {{ kubelet_version.stdout | default('bilinmiyor') }}"
+          - "{{ node_hostname.stdout }} containerd: {{ containerd_version_before }} -> {{ containerd_version.stdout | default('bilinmiyor') }}"

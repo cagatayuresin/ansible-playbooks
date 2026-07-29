@@ -1,0 +1,28 @@
+# Ansible
+*.retry
+.vault_pass
+vault_pass.txt
+*.vault
+.ansible/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code oturum durumu (yerel, repoya ait değil)
+.claude/
+
+# Gerçek müşteri/production inventory'leri - repoda sadece musteri_a örnek olarak kalır
+inventories/musteri_b/
+inventories/detay_sivas_llmserver/

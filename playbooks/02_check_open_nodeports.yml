@@ -1,0 +1,47 @@
+---
+- name: Check Open NodePorts and Generate Browser Links
+  hosts: master, singlenode
+  gather_facts: false
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Kubeconfig / kubectl erişim kontrolü
+      command: kubectl cluster-info
+      register: kubectl_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Kubectl erişilemedi uyarısı
+      debug:
+        msg: "kubectl erişimi sağlanamadı (KUBECONFIG eksik/yanlış ya da cluster'a erişilemiyor)."
+      when: kubectl_check.rc != 0
+
+    - name: Find all NodePort services and their ports
+      shell: |
+        kubectl get svc -A -o jsonpath='{range .items[?(@.spec.type=="NodePort")]}{.metadata.namespace}/{.metadata.name}: {range .spec.ports[*]}{.nodePort}{" "}{end}{"\n"}{end}'
+      register: nodeport_services
+      changed_when: false
+      when: kubectl_check.rc == 0
+
+    - name: "Generate browser accessible links (Çalışma Şartı: Açık NodePort bulunmalı)"
+      debug:
+        msg: |
+          Aşağıdaki servisler NodePort olarak açılmıştır. Browser üzerinden erişmek için linkleri kullanabilirsiniz:
+          {% for line in nodeport_services.stdout_lines %}
+          - {{ line.split(':')[0] }} -> http://{{ inventory_hostname }}:{{ line.split(':')[1] | trim | split(' ') | first }}
+          {% endfor %}
+      when:
+        - kubectl_check.rc == 0
+        - nodeport_services is defined
+        - nodeport_services.stdout_lines | length > 0
+
+    - name: "No NodePort found message (Çalışma Şartı: Hiç NodePort olmamalı)"
+      debug:
+        msg: "Sistemde açık NodePort bulunamadı."
+      when:
+        - kubectl_check.rc == 0
+        - nodeport_services is defined
+        - nodeport_services.stdout_lines | length == 0

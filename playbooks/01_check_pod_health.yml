@@ -1,0 +1,33 @@
+---
+- name: Check Kubernetes Pod Health
+  hosts: master, singlenode
+  gather_facts: false
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Kubeconfig / kubectl erişim kontrolü
+      command: kubectl cluster-info
+      register: kubectl_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Kubectl erişilemedi uyarısı
+      debug:
+        msg: "kubectl erişimi sağlanamadı (KUBECONFIG eksik/yanlış ya da cluster'a erişilemiyor)."
+      when: kubectl_check.rc != 0
+
+    - name: Get all pods in all namespaces with wide output
+      command: kubectl get pods -A -o wide
+      register: pod_status
+      changed_when: false
+      when: kubectl_check.rc == 0
+
+    - name: Display pod health status
+      debug:
+        msg: "{{ pod_status.stdout }}"
+      when:
+        - kubectl_check.rc == 0
+        - pod_status is defined
