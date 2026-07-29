@@ -1,0 +1,29 @@
+---
+- name: Host Açık Portlar ve Firewall Raporu
+  hosts: all
+  gather_facts: true
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Port ve firewall bilgilerini topla
+      become: true
+      script: host_ports_firewall_check.py
+      args:
+        executable: python3
+      register: ports_fw
+      changed_when: false
+      ignore_errors: true
+      check_mode: false
+
+    - name: Port / firewall raporu
+      debug:
+        msg:
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            ################################################################################
+          - "{{ ports_fw.stdout | default(ports_fw.stderr | default('Rapor üretilemedi')) }}"

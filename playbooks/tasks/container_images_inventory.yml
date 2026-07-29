@@ -1,0 +1,51 @@
+---
+# Host üzerindeki container imaj envanteri / prune.
+# Play vars: image_inventory_mode = report | unused | prune
+# Üretir: image_inventory (stdout rapor)
+
+- name: Docker var mı
+  command: which docker
+  register: docker_bin
+  ignore_errors: true
+  changed_when: false
+  check_mode: false
+
+- name: crictl var mı
+  command: which crictl
+  register: crictl_bin
+  ignore_errors: true
+  changed_when: false
+  check_mode: false
+
+- name: "Container imaj envanteri / prune (Çalışma Şartı: docker veya crictl olmalı)"
+  become: true
+  script: "container_images_inventory.py --mode {{ image_inventory_mode | default('report') }}"
+  args:
+    executable: python3
+  register: image_inventory
+  changed_when: (image_inventory_mode | default('report')) == 'prune'
+  ignore_errors: true
+  check_mode: false
+  when: docker_bin.rc == 0 or crictl_bin.rc == 0
+
+- name: Container imaj envanteri / prune raporu
+  debug:
+    msg:
+      - |
+        ################################################################################
+        # HOST: {{ inventory_hostname }}
+        # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+        # mode: {{ image_inventory_mode | default('report') }}
+        ################################################################################
+      - |
+        Runtime: {{
+          (
+            (['docker'] if docker_bin.rc == 0 else [])
+            + (['crictl/containerd'] if crictl_bin.rc == 0 else [])
+          ) | join(' + ')
+          if (docker_bin.rc == 0 or crictl_bin.rc == 0)
+          else 'yok'
+        }}
+      - "{{ image_inventory.stdout | default(image_inventory.stderr | default('Rapor üretilemedi')) if image_inventory is defined else 'docker/crictl yok — atlandı' }}"
+      - |
+        Detay: docs/17_check_container_images.md / docs/18_prune_unused_images.md

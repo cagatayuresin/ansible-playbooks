@@ -1,7 +1,7 @@
 ---
 - name: Sunucu Zamanı ve Saat Dilimi Raporu
   hosts: all
-  gather_facts: false
+  gather_facts: true
 
   vars:
     time_service_patterns:
@@ -42,4 +42,10 @@
 
     - name: Zaman ve saat dilimi raporu
       debug:
-        msg: "{{ server_time.stdout }}"
+        msg:
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            ################################################################################
+          - "{{ server_time.stdout }}"

@@ -1,0 +1,63 @@
+---
+- name: Ağ / DNS / İnternet Erişim Kontrolü
+  hosts: all
+  gather_facts: true
+
+  vars:
+    # Virgülle ayrılmış listeler; --extra-vars ile özelleştirilebilir
+    net_dns_hosts: >-
+      google.com,cloudflare.com,
+      registry-1.docker.io,ghcr.io,quay.io,
+      registry.k8s.io,pkg.k8s.io,
+      archive.ubuntu.com,security.ubuntu.com,
+      github.com,raw.githubusercontent.com
+    net_ping_targets: "1.1.1.1,8.8.8.8"
+    net_tcp_targets: >-
+      1.1.1.1:443,8.8.8.8:53,
+      google.com:443,github.com:443,
+      registry-1.docker.io:443,ghcr.io:443,quay.io:443,
+      registry.k8s.io:443,
+      archive.ubuntu.com:80,archive.ubuntu.com:443
+    net_http_urls: >-
+      https://www.google.com/generate_204,
+      https://github.com,
+      https://registry-1.docker.io/v2/,
+      https://ghcr.io,
+      https://quay.io,
+      https://registry.k8s.io,
+      http://archive.ubuntu.com/ubuntu/,
+      https://cloudflare.com
+    # İnternet varken Cloudflare ile indirme hızı (1MB + 10MB); false ile kapat
+    net_speed_test: true
+    net_speed_bytes: "1000000,10000000"
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Ağ / DNS / internet kontrollerini çalıştır
+      script: >-
+        network_connectivity_check.py
+        --dns-hosts {{ net_dns_hosts | regex_replace('\s+', '') | quote }}
+        --ping-targets {{ net_ping_targets | regex_replace('\s+', '') | quote }}
+        --tcp-targets {{ net_tcp_targets | regex_replace('\s+', '') | quote }}
+        --http-urls {{ net_http_urls | regex_replace('\s+', '') | quote }}
+        --speed-test {{ (net_speed_test | bool) | ternary('true', 'false') | quote }}
+        --speed-bytes {{ net_speed_bytes | regex_replace('\s+', '') | quote }}
+      args:
+        executable: python3
+      register: net_check
+      changed_when: false
+      ignore_errors: true
+      check_mode: false
+
+    - name: Ağ / DNS / internet raporu
+      debug:
+        msg:
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            ################################################################################
+          - "{{ net_check.stdout | default(net_check.stderr | default('Rapor üretilemedi')) }}"

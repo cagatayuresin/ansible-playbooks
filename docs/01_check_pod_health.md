@@ -8,6 +8,7 @@ Bu playbook, Kubernetes cluster'ınızdaki (genellikle `master` veya `singlenode
 
 - Hedef sunucuda (master veya singlenode) `kubectl` kurulu ve konfigüre edilmiş olmalıdır.
 - Ansible inventory'nizde `[master]` veya `[singlenode]` grubu tanımlanmış olmalıdır.
+- Playbook, non-interactive SSH'te `.bashrc` yüklenmediği için (özellikle k3s) `KUBECONFIG` yolunu `~/.kube/config` olarak açıkça set eder. Klasik kubeadm kurulumlarında da aynı varsayılan yol kullanılır.
 
 Playbook artık pod bilgisi almadan önce `kubectl cluster-info` ile bir erişim ön kontrolü yapar. `kubectl` erişimi yoksa (KUBECONFIG eksik/yanlış veya cluster'a ulaşılamıyor) anlamlı bir uyarı mesajı basılır ve pod sorgusu atlanır.
 

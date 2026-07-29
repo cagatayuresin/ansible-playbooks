@@ -14,6 +14,7 @@ Not: `RTC time` alanının `Local time`'dan farklı görünmesi normaldir — Li
 - `community.general` collection'ı gereklidir (`community.general.timezone` modülü).
 - `hosts: all` yerine belirli bir host/grup için `--limit` kullanılması önerilir.
 - **Saat dilimini ayarlayan görev `become: true` (sudo) ile çalışır.** `timedatectl set-timezone`, `org.freedesktop.timedate1` üzerinden root yetkisi gerektiren bir D-Bus/polkit işlemidir; sudo olmadan interaktif olmayan bir SSH oturumunda polkit onayı hiç gelmediği için istek "Connection timed out" ile başarısız olur. Diğer playbook'lardaki salt-okunur komutların aksine, bu gerçek bir sistem değişikliği olduğu için sudo gerekir.
+- Sonuç / doğrulama raporlarının ilk bloğu makine kimliğidir (`HOST` + `hostname`); birden fazla node'da hangi çıktının kime ait olduğu buradan okunur.
 
 ## Çalıştırma Komutu
 

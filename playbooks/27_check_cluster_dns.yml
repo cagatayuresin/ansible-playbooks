@@ -1,0 +1,35 @@
+---
+- name: Cluster DNS / CoreDNS Raporu
+  hosts: master:singlenode
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
+
+  vars:
+    first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Cluster DNS raporunu üret
+      script: k8s_cluster_dns_check.py
+      args:
+        executable: python3
+      register: dns_report
+      changed_when: false
+      ignore_errors: true
+      check_mode: false
+      when: inventory_hostname == first_control_plane
+
+    - name: Cluster DNS / CoreDNS raporu
+      debug:
+        msg:
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            ################################################################################
+          - "{{ dns_report.stdout | default(dns_report.stderr | default('Rapor üretilemedi')) }}"
+      when: inventory_hostname == first_control_plane

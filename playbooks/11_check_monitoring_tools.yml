@@ -316,16 +316,71 @@
       when: glances_ready.rc == 0
 
     # ---------- Rapor ----------
+    # Çıktı sütunlarının anlamı: docs/11_check_monitoring_tools.md
     - name: İzleme araçları raporu
+      vars:
+        _vmstat: "{{ ((vmstat_output.stdout | default('')) ~ ('\n' ~ (vmstat_output.stderr | default('')) if (vmstat_output.stderr | default('')) else '')) if vmstat_output is defined else '' }}"
+        _iostat: "{{ ((iostat_output.stdout | default('')) ~ ('\n' ~ (iostat_output.stderr | default('')) if (iostat_output.stderr | default('')) else '')) if iostat_output is defined else '' }}"
+        _sar: "{{ ((sar_output.stdout | default('')) ~ ('\n' ~ (sar_output.stderr | default('')) if (sar_output.stderr | default('')) else '')) if sar_output is defined else '' }}"
+        _dstat: "{{ ((dstat_output.stdout | default('')) ~ ('\n' ~ (dstat_output.stderr | default('')) if (dstat_output.stderr | default('')) else '')) if dstat_output is defined else '' }}"
+        _iotop: "{{ ((iotop_output.stdout | default('')) ~ ('\n' ~ (iotop_output.stderr | default('')) if (iotop_output.stderr | default('')) else '')) if iotop_output is defined else '' }}"
+        _atop: "{{ ((atop_output.stdout | default('')) ~ ('\n' ~ (atop_output.stderr | default('')) if (atop_output.stderr | default('')) else '')) if atop_output is defined else '' }}"
+        _perf: "{{ ((perf_output.stderr | default('')) ~ ('\n' ~ (perf_output.stdout | default('')) if (perf_output.stdout | default('')) else '')) if perf_output is defined else '' }}"
+        _glances: "{{ ((glances_output.stdout | default('')) ~ ('\n' ~ (glances_output.stderr | default('')) if (glances_output.stderr | default('')) else '')) if glances_output is defined else '' }}"
       debug:
         msg:
-          - "vmstat: {{ 'kurulu' if vmstat_ready.rc == 0 else 'kurulamadı' }}\n{{ vmstat_output.stdout | default('') }}"
-          - "iostat: {{ 'kurulu' if iostat_ready.rc == 0 else 'kurulamadı' }}\n{{ iostat_output.stdout | default('') }}"
-          - "sar: {{ 'kurulu' if sar_ready.rc == 0 else 'kurulamadı' }}\n{{ sar_output.stdout | default('') }}"
-          - "htop: {{ 'kurulu (interaktif araç, otomatik rapor üretilmez)' if htop_ready.rc == 0 else 'kurulamadı' }}"
-          - "dstat: {{ 'kurulu' if dstat_ready.rc == 0 else 'kurulamadı' }}\n{{ dstat_output.stdout | default('') }}"
-          - "iotop: {{ 'kurulu' if iotop_ready.rc == 0 else 'kurulamadı' }}\n{{ iotop_output.stdout | default('') }}"
-          - "atop: {{ 'kurulu' if atop_ready.rc == 0 else 'kurulamadı' }}\n{{ atop_output.stdout | default('') }}"
-          - "perf: {{ 'kurulu' if perf_ready.rc == 0 else 'kurulamadı' }}\n{{ perf_output.stderr | default(perf_output.stdout | default('')) }}"
-          - "bpftrace: {{ ('kurulu, sürüm: ' + (bpftrace_output.stdout | default('bilinmiyor'))) if bpftrace_ready.rc == 0 else 'kurulamadı' }}"
-          - "glances: {{ 'kurulu' if glances_ready.rc == 0 else 'kurulamadı' }}\n{{ glances_output.stdout | default('') }}"
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            ################################################################################
+          - |
+            === vmstat (CPU/bellek/swap/I/O genel bakış) ===
+            Durum: {{ 'kurulu' if vmstat_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: Son satırlara bak — r/b kuyruk; si/so swap baskısı; us+sy yüksek+id düşük=CPU meşgul; wa yüksek=disk bekliyor
+            {{ _vmstat | trim }}
+          - |
+            === iostat (disk cihaz I/O) ===
+            Durum: {{ 'kurulu' if iostat_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: İkinci örneğe bak — %util ~100 veya yüksek await = disk darboğazı
+            {{ _iostat | trim }}
+          - |
+            === sar (CPU kırılımı) ===
+            Durum: {{ 'kurulu' if sar_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: %user/%system yüksek=CPU; %iowait yüksek=I/O; %steal yüksek=VM komşu gürültüsü
+            {{ _sar | trim }}
+          - |
+            === htop (interaktif süreç izleyici) ===
+            Durum: {{ 'kurulu — SSH içinde elle: htop' if htop_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: Otomatik örnek yok (TUI). Anlık kim CPU/RAM yiyor bakmak için.
+          - |
+            === dstat (cpu+disk+net tek satır) ===
+            Durum: {{ 'kurulu' if dstat_ready.rc == 0 else 'kurulamadı (bazı yeni Ubuntu sürümlerinde paket kalkmış olabilir)' }}
+            Yorum: Anlık özet; yoksa vmstat+iostat yeterli
+            {{ _dstat | trim }}
+          - |
+            === iotop (process bazlı disk I/O) ===
+            Durum: {{ 'kurulu' if iotop_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: DISK READ/WRITE yüksek satırlar = disk'i yoran process; boş liste = o anda anlamlı I/O yok
+            {{ _iotop | trim }}
+          - |
+            === atop (sistem paneli özeti) ===
+            Durum: {{ 'kurulu' if atop_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: CPU/MEM/DSK/NET blokları; çok veth (k8s) NET'i uzatır — hata değil. Process listesi kesildi.
+            {{ _atop | trim }}
+          - |
+            === perf (donanım/yazılım sayaçları) ===
+            Durum: {{ 'kurulu' if perf_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: cycles/instructions/cache; VM'de '<not supported>' normaldir, hata değildir
+            {{ _perf | trim }}
+          - |
+            === bpftrace (eBPF izleme) ===
+            Durum: {{ ('kurulu, sürüm: ' ~ (bpftrace_output.stdout | default('bilinmiyor') | trim)) if bpftrace_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: Otomatik betik çalıştırılmaz (riskli). Derin kernel/syscall izleme için SSH'te elle kullanılır.
+          - |
+            === glances (özet dashboard) ===
+            Durum: {{ 'kurulu' if glances_ready.rc == 0 else 'kurulamadı' }}
+            Yorum: cpu.total / mem.percent / load.min1 — load'u çekirdek sayısıyla karşılaştır
+            {{ _glances | trim }}
+          - |
+            Detaylı sütun sözlüğü: docs/11_check_monitoring_tools.md

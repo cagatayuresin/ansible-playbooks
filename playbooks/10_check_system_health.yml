@@ -90,7 +90,11 @@
     - name: Sistem sağlığı raporu
       debug:
         msg:
-          - "Hostname: {{ ansible_facts['hostname'] }}"
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            ################################################################################
           - "OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }} ({{ ansible_facts['distribution_release'] }})"
           - "Kernel: {{ ansible_facts['kernel'] }}"
           - "Uptime: {{ uptime_info.stdout }}"

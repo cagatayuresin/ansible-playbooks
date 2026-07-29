@@ -1,0 +1,12 @@
+---
+- name: Host Container Imaj Envanteri
+  hosts: all
+  gather_facts: true
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Imaj envanterini topla ve raporla
+      import_tasks: tasks/container_images_inventory.yml

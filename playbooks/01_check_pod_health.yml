@@ -2,6 +2,8 @@
 - name: Check Kubernetes Pod Health
   hosts: master, singlenode
   gather_facts: false
+  environment:
+    KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
 
   pre_tasks:
     - name: Ping pong bağlantı testi

@@ -8,6 +8,7 @@ Bu playbook, sunucunun saat/saat dilimi bilgisini (`timedatectl`) raporlar ve ha
 
 - `hosts: all` — her node'da çalışır.
 - Servis keşfi Ansible'ın yerleşik `service_facts` modülüyle yapılır, ek bir collection gerekmez.
+- Raporun ilk bloğu makine kimliğidir (`HOST` = inventory adı/IP, `hostname` = sunucunun kendi adı); birden fazla node'da hangi çıktının kime ait olduğu buradan okunur.
 
 ## Çalıştırma Komutu
 

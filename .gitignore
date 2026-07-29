@@ -26,3 +26,4 @@ Thumbs.db
 # Gerçek müşteri/production inventory'leri - repoda sadece musteri_a örnek olarak kalır
 inventories/musteri_b/
 inventories/detay_sivas_llmserver/
+inventories/cagatayuresincom/

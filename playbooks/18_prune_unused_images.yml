@@ -1,0 +1,25 @@
+---
+- name: Kullanılmayan Container Imajlarını Temizle
+  hosts: all
+  gather_facts: true
+
+  vars:
+    # Güvenlik: true olmadan silme YAPILMAZ — sadece aday listesi
+    image_prune_confirm: false
+    image_inventory_mode: "{{ 'prune' if (image_prune_confirm | bool) else 'unused' }}"
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+    - name: Prune onay uyarısı
+      debug:
+        msg: >-
+          image_prune_confirm=false → sadece kullanılmayan imaj ADAYLARI listelenir, silinmez.
+          Silmek için: --extra-vars 'image_prune_confirm=true'
+      when: not (image_prune_confirm | bool)
+      run_once: true
+
+  tasks:
+    - name: Imaj adaylarını listele veya prune et
+      import_tasks: tasks/container_images_inventory.yml

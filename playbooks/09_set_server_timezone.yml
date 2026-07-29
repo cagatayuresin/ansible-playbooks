@@ -15,7 +15,13 @@
 
     - name: Zaman dilimi ayarlama sonucu
       debug:
-        msg: "Timezone {{ 'Europe/Istanbul olarak değiştirildi' if timezone_set.changed else 'zaten Europe/Istanbul idi, değişiklik yapılmadı' }}"
+        msg:
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            ################################################################################
+          - "Timezone {{ 'Europe/Istanbul olarak değiştirildi' if timezone_set.changed else 'zaten Europe/Istanbul idi, değişiklik yapılmadı' }}"
 
     - name: "Zaman senkronizasyon servislerini aktif ve kalıcı hale getir (Çalışma Şartı: 08'de bir zaman servisi bulunmuş olmalı)"
       become: true
@@ -48,4 +54,10 @@
 
     - name: Doğrulama raporu
       debug:
-        msg: "{{ server_time_after.stdout }}"
+        msg:
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            ################################################################################
+          - "{{ server_time_after.stdout }}"

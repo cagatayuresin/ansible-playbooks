@@ -1,0 +1,123 @@
+---
+- name: Journalctl Kernel ve Hata Logları Raporu
+  hosts: all
+  gather_facts: true
+
+  vars:
+    # --extra-vars ile değiştirilebilir: journal_since="6 hours ago" journal_lines=120
+    journal_since: "24 hours ago"
+    journal_lines: 80
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Kernel logları (err ve üzeri)
+      become: true
+      command:
+        argv:
+          - journalctl
+          - -k
+          - -p
+          - err..emerg
+          - --since
+          - "{{ journal_since }}"
+          - -n
+          - "{{ journal_lines }}"
+          - --no-pager
+          - --output=short-iso
+      register: journal_kernel_err
+      changed_when: false
+      ignore_errors: true
+      check_mode: false
+
+    - name: Kernel logları (warning)
+      become: true
+      command:
+        argv:
+          - journalctl
+          - -k
+          - -p
+          - warning
+          - --since
+          - "{{ journal_since }}"
+          - -n
+          - "{{ journal_lines }}"
+          - --no-pager
+          - --output=short-iso
+      register: journal_kernel_warn
+      changed_when: false
+      ignore_errors: true
+      check_mode: false
+
+    - name: Sistem genel hata logları (err ve üzeri, tüm unit'ler)
+      become: true
+      command:
+        argv:
+          - journalctl
+          - -p
+          - err..emerg
+          - --since
+          - "{{ journal_since }}"
+          - -n
+          - "{{ journal_lines }}"
+          - --no-pager
+          - --output=short-iso
+      register: journal_system_err
+      changed_when: false
+      ignore_errors: true
+      check_mode: false
+
+    - name: Bu boot'taki kernel hataları (err ve üzeri)
+      become: true
+      command:
+        argv:
+          - journalctl
+          - -k
+          - -b
+          - -p
+          - err..emerg
+          - -n
+          - "{{ journal_lines }}"
+          - --no-pager
+          - --output=short-iso
+      register: journal_boot_kernel_err
+      changed_when: false
+      ignore_errors: true
+      check_mode: false
+
+    - name: Journal hata / kernel log raporu
+      vars:
+        _host_banner: |
+          ################################################################################
+          # HOST: {{ inventory_hostname }}
+          # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+          # aralık: {{ journal_since }} | satır limiti/bölüm: {{ journal_lines }}
+          ################################################################################
+        _k_err: "{{ journal_kernel_err.stdout | default(journal_kernel_err.stderr | default('')) | trim }}"
+        _k_warn: "{{ journal_kernel_warn.stdout | default(journal_kernel_warn.stderr | default('')) | trim }}"
+        _s_err: "{{ journal_system_err.stdout | default(journal_system_err.stderr | default('')) | trim }}"
+        _b_err: "{{ journal_boot_kernel_err.stdout | default(journal_boot_kernel_err.stderr | default('')) | trim }}"
+        _empty: "-- Bu aralıkta / bu öncelikte kayıt yok --"
+      debug:
+        msg:
+          - "{{ _host_banner }}"
+          - |
+            === Kernel ERR+ ({{ journal_since }}) ===
+            Yorum: OOM, I/O error, firmware, NMI, disk/NVMe, ağ sürücü hataları. Boşsa iyi işaret.
+            {{ _k_err if _k_err | length > 0 else _empty }}
+          - |
+            === Kernel WARNING ({{ journal_since }}) ===
+            Yorum: Henüz fatal değil ama bozulma habercisi olabilir (retry, throttling, deprecated).
+            {{ _k_warn if _k_warn | length > 0 else _empty }}
+          - |
+            === Sistem ERR+ tüm unit'ler ({{ journal_since }}) ===
+            Yorum: Servis çökmesi, auth fail, unit failure. Kernel dışı sorunlar burada görünür.
+            {{ _s_err if _s_err | length > 0 else _empty }}
+          - |
+            === Bu boot kernel ERR+ ===
+            Yorum: Son yeniden açılıştan beri kernel hataları (since filtresinden bağımsız).
+            {{ _b_err if _b_err | length > 0 else _empty }}
+          - |
+            Detaylı yorum: docs/13_check_journal_errors.md

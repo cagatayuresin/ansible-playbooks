@@ -1,0 +1,46 @@
+---
+- name: Kubernetes Warning Event Raporu
+  hosts: master:singlenode
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
+
+  vars:
+    first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
+    # --extra-vars ile: events_since_hours=48 events_limit=120 events_namespace=n8n
+    events_since_hours: 24
+    events_limit: 80
+    # Boş = tüm namespace'ler; dolu = sadece o namespace
+    events_namespace: ""
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Warning event raporunu üret
+      script: >-
+        k8s_warning_events_check.py
+        --since-hours {{ events_since_hours | int }}
+        --limit {{ events_limit | int }}
+        --namespace {{ events_namespace | default('') | quote }}
+      args:
+        executable: python3
+      register: events_report
+      changed_when: false
+      ignore_errors: true
+      check_mode: false
+      when: inventory_hostname == first_control_plane
+
+    - name: Warning event raporu
+      debug:
+        msg:
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            # since_hours: {{ events_since_hours }} | limit: {{ events_limit }}
+            # namespace: {{ events_namespace if (events_namespace | default('') | length) > 0 else 'ALL' }}
+            ################################################################################
+          - "{{ events_report.stdout | default(events_report.stderr | default('Rapor üretilemedi')) }}"
+      when: inventory_hostname == first_control_plane

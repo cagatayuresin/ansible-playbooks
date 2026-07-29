@@ -1,0 +1,36 @@
+---
+- name: Metrics-server Kurulum ve İstatistik
+  hosts: master:singlenode
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
+
+  vars:
+    first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
+    # --extra-vars ile değiştirilebilir
+    metrics_server_manifest_url: "https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml"
+    # On-prem / self-signed kubelet sertifikaları için genelde gerekir
+    metrics_server_kubelet_insecure_tls: true
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Metrics-server durumunu kontrol et
+      import_tasks: tasks/metrics_server_check.yml
+      when: inventory_hostname == first_control_plane
+
+    - name: Metrics-server kurulumunu sağla
+      import_tasks: tasks/metrics_server_install.yml
+      when:
+        - inventory_hostname == first_control_plane
+        - kubectl_check.rc | default(1) == 0
+
+    - name: Kurulum sonrası metrics-server durumunu yeniden kontrol et
+      import_tasks: tasks/metrics_server_check.yml
+      when: inventory_hostname == first_control_plane
+
+    - name: Metrics-server istatistiklerini al
+      import_tasks: tasks/metrics_server_report.yml
+      when: inventory_hostname == first_control_plane

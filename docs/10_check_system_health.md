@@ -23,6 +23,7 @@ Bu playbook, bir sunucunun genel sistem sağlığını raporlar:
 - `hosts: all` — her node'da çalışır.
 - Bu playbook `gather_facts: true` kullanır (repodaki diğer playbook'ların aksine) — OS/kernel/CPU/sanallaştırma bilgisi Ansible'ın kendi fact toplama mekanizmasından gelir.
 - `dmidecode` çıktısı için `become: true` (sudo) gerekir; kurulu değilse veya erişilemezse o bölüm sessizce "erişilemedi" mesajı gösterir, playbook hata vermez.
+- Raporun ilk bloğu makine kimliğidir (`HOST` = inventory adı/IP, `hostname` = sunucunun kendi adı); birden fazla node'da hangi çıktının kime ait olduğu buradan okunur.
 
 ## Çalıştırma Komutu
 
@@ -39,7 +40,7 @@ ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/10_check_system_he
 TASK [Sistem sağlığı raporu] ****************************************************
 ok: [203.0.113.10] => {
     "msg": [
-        "Hostname: node1",
+        "################################################################################\n# HOST: 203.0.113.10\n# hostname: node1\n################################################################################",
         "OS: Ubuntu 22.04 (jammy)",
         "Kernel: 5.15.0-186-generic",
         "Uptime: up 2 days, 6 hours, 20 minutes",
