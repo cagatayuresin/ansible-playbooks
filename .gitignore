@@ -25,3 +25,7 @@ Thumbs.db
 
 # Bütün inventory'ler (gerçek veriler) ignore ediliyor. Örnekler inventories-example/ klasöründedir.
 inventories/
+
+# Özel playbooklar ve k8s script dizini
+detay-playbooks/
+k8s-deployment-script-main/
