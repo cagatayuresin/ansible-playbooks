@@ -17,7 +17,7 @@
         url: "{{ item.url }}"
         method: GET
         timeout: 5
-        return_content: no
+        return_content: false
       register: uri_results
       loop: "{{ endpoints }}"
       ignore_errors: true
