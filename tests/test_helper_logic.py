@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import redirect_stdout
 import importlib.util
 import io
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -48,8 +49,9 @@ class BackupLogicTests(unittest.TestCase):
             archive = root / "etcd_snapshot_new.zip"
             with zipfile.ZipFile(archive, "w") as output:
                 output.writestr("nested/snapshot.db", b"new database")
-            old.touch()
-            archive.touch()
+            old_mtime = 1_700_000_000
+            os.utime(old, (old_mtime, old_mtime))
+            os.utime(archive, (old_mtime + 60, old_mtime + 60))
 
             self.assertEqual(backup.newest_snapshot(root), archive)
             workspace = root / "workspace"

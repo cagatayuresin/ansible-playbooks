@@ -19,9 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enforced Kubernetes target version format and supported upgrade range before package changes.
 - Pinned CI tool versions and corrected CI to use the tracked example inventory.
 - Updated installation steps and playbook counts.
+- Migrated GitHub Pages from Minimal to a pinned Just the Docs theme with
+  wider content, ordered navigation, search, and code-copy controls.
 
 ### Fixed
 - Handled nullable EndpointSlice fields without crashing and stopped masking helper execution errors in playbook 35.
+- Made the etcd snapshot selection unit test deterministic across filesystems
+  with coarse timestamp resolution.
+- Escaped Docker's Go-template example so Jekyll does not parse it as Liquid.
 
 ## [1.0.0] - 2026-07-30
 

@@ -17,7 +17,7 @@ Bu playbook, inventory'deki sunucularda Docker'ın kurulu olup olmadığını ko
 - Hedef sunucularda Docker yüklü olmalıdır. (Yüklü değilse hata vermez, sadece yüklü olmadığını belirtir.)
 - Ansible inventory'nizde ilgili gruplar (örn. `workers`, `master`) tanımlanmış olmalıdır.
 
-Container tablosu okunaklı olması için Docker'ın kendi `table` formatıyla ayrıca alınır (görüntüleme amaçlı); link üretimi ise `docker ps --format '{{json .}}'` ile alınan yapılandırılmış JSON çıktısı üzerinden yapılır (önceki `sed` regex tabanlı yaklaşımın yerine). Bu sayede birden fazla porta açık olan container'ların tüm portları için ayrı ayrı link üretilir; eski yaklaşım satır başına yalnızca ilk portu yakalıyordu.
+Container tablosu okunaklı olması için Docker'ın kendi `table` formatıyla ayrıca alınır (görüntüleme amaçlı); link üretimi ise `docker ps --format '{% raw %}{{json .}}{% endraw %}'` ile alınan yapılandırılmış JSON çıktısı üzerinden yapılır (önceki `sed` regex tabanlı yaklaşımın yerine). Bu sayede birden fazla porta açık olan container'ların tüm portları için ayrı ayrı link üretilir; eski yaklaşım satır başına yalnızca ilk portu yakalıyordu.
 
 ## Çalıştırma Komutu
 
