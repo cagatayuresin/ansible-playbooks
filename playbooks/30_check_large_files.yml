@@ -14,7 +14,7 @@
   tasks:
     - name: Büyük dosyaları bul
       become: true
-      shell: "find / -type f -size +{{ min_size }} -mtime -{{ max_age_days }} -exec ls -lh {} + 2>/dev/null || true"
+      shell: "find / \\( -path /proc -o -path /sys -o -path /dev -o -path /run \\) -prune -o -type f -size +{{ min_size }} -mtime -{{ max_age_days }} -exec ls -lh {} + 2>/dev/null || true"
       register: large_files
       changed_when: false
 
