@@ -29,3 +29,7 @@ inventories/
 # Özel playbooklar ve k8s script dizini
 detay-playbooks/
 k8s-deployment-script-main/
+
+# Multipass test dosyaları
+setup_multipass.sh
+inventory_multipass.ini
