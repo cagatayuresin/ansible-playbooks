@@ -8,6 +8,8 @@
 ![Ansible](https://img.shields.io/badge/Ansible-E3000F?style=flat&logo=ansible&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat&logo=kubernetes&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![On-Premises](https://img.shields.io/badge/Deployment-On--Prem-4B5563?style=flat)
+![Air-Gapped](https://img.shields.io/badge/Environment-Air--Gapped_Ready-10B981?style=flat)
 
 Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonu. 
 
