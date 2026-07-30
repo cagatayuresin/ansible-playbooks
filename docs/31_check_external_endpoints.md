@@ -1,3 +1,9 @@
+---
+title: "31 · check_external_endpoints"
+parent: Playbook Kılavuzları
+nav_order: 31
+---
+
 # 31. Dış Endpoint Bağlantı Testi
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)

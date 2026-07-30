@@ -1,3 +1,9 @@
+---
+title: "10 · check_system_health"
+parent: Playbook Kılavuzları
+nav_order: 10
+---
+
 # 10_check_system_health.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)

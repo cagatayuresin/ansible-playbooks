@@ -1,3 +1,9 @@
+---
+title: "09 · set_server_timezone"
+parent: Playbook Kılavuzları
+nav_order: 9
+---
+
 # 09_set_server_timezone.yml - Kullanım Kılavuzu
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat)

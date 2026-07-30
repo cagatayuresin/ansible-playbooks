@@ -1,3 +1,9 @@
+---
+title: "11 · check_monitoring_tools"
+parent: Playbook Kılavuzları
+nav_order: 11
+---
+
 # 11_check_monitoring_tools.yml - Kullanım Kılavuzu
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat)

@@ -1,3 +1,9 @@
+---
+title: "02 · check_open_nodeports"
+parent: Playbook Kılavuzları
+nav_order: 2
+---
+
 # 02_check_open_nodeports.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)

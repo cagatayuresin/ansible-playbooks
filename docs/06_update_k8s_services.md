@@ -1,3 +1,9 @@
+---
+title: "06 · update_k8s_services"
+parent: Playbook Kılavuzları
+nav_order: 6
+---
+
 # 06_update_k8s_services.yml - Kullanım Kılavuzu
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)

@@ -1,3 +1,9 @@
+---
+title: "23 · check_storage_health"
+parent: Playbook Kılavuzları
+nav_order: 23
+---
+
 # 23_check_storage_health.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)

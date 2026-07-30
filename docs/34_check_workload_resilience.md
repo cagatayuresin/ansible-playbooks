@@ -1,3 +1,9 @@
+---
+title: "34 · check_workload_resilience"
+parent: Playbook Kılavuzları
+nav_order: 34
+---
+
 # 34_check_workload_resilience.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Kubernetes](https://img.shields.io/badge/Kubernetes-Workloads-326CE5?style=flat)

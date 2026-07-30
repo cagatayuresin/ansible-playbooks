@@ -1,3 +1,9 @@
+---
+title: "18 · prune_unused_images"
+parent: Playbook Kılavuzları
+nav_order: 18
+---
+
 # 18_prune_unused_images.yml - Kullanım Kılavuzu
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![Docker](https://img.shields.io/badge/Runtime-Docker-2496ED?style=flat&logo=docker&logoColor=white)

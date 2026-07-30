@@ -1,3 +1,9 @@
+---
+title: "13 · check_journal_errors"
+parent: Playbook Kılavuzları
+nav_order: 13
+---
+
 # 13_check_journal_errors.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)

@@ -1,3 +1,9 @@
+---
+title: "35 · check_service_endpoints"
+parent: Playbook Kılavuzları
+nav_order: 35
+---
+
 # 35_check_service_endpoints.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Kubernetes](https://img.shields.io/badge/Kubernetes-EndpointSlice-326CE5?style=flat)

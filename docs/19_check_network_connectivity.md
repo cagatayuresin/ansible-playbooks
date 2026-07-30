@@ -1,3 +1,9 @@
+---
+title: "19 · check_network_connectivity"
+parent: Playbook Kılavuzları
+nav_order: 19
+---
+
 # 19_check_network_connectivity.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)

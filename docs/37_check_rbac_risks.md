@@ -1,3 +1,9 @@
+---
+title: "37 · check_rbac_risks"
+parent: Playbook Kılavuzları
+nav_order: 37
+---
+
 # 37_check_rbac_risks.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Security](https://img.shields.io/badge/Security-RBAC-7C3AED?style=flat)

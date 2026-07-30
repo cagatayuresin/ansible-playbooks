@@ -1,3 +1,9 @@
+---
+title: "17 · check_container_images"
+parent: Playbook Kılavuzları
+nav_order: 17
+---
+
 # 17_check_container_images.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Docker](https://img.shields.io/badge/Runtime-Docker-2496ED?style=flat&logo=docker&logoColor=white)

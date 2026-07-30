@@ -1,3 +1,9 @@
+---
+layout: home
+title: Ana Sayfa
+nav_order: 1
+---
+
 # Ansible Playbooks Dokümantasyonu
 
 Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonuna hoş geldiniz.

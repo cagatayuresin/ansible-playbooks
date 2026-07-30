@@ -1,3 +1,9 @@
+---
+title: "36 · check_pod_security_posture"
+parent: Playbook Kılavuzları
+nav_order: 36
+---
+
 # 36_check_pod_security_posture.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Security](https://img.shields.io/badge/Security-Pod_Posture-7C3AED?style=flat)

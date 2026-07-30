@@ -1,3 +1,9 @@
+---
+title: "39 · diagnose_unschedulable_pods"
+parent: Playbook Kılavuzları
+nav_order: 39
+---
+
 # 39_diagnose_unschedulable_pods.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Kubernetes](https://img.shields.io/badge/Kubernetes-Pod_Diagnostics-326CE5?style=flat)

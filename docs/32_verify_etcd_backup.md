@@ -1,3 +1,9 @@
+---
+title: "32 · verify_etcd_backup"
+parent: Playbook Kılavuzları
+nav_order: 32
+---
+
 # 32_verify_etcd_backup.yml - Kullanım Kılavuzu
 
 ![Conditional](https://img.shields.io/badge/State-Read--Only_Default-F59E0B?style=flat) ![etcd](https://img.shields.io/badge/Datastore-etcd-419EDA?style=flat)

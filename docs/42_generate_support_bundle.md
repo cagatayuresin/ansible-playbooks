@@ -1,3 +1,9 @@
+---
+title: "42 · generate_support_bundle"
+parent: Playbook Kılavuzları
+nav_order: 42
+---
+
 # 42_generate_support_bundle.yml - Kullanım Kılavuzu
 
 ![Modifies State](https://img.shields.io/badge/State-Writes_Archive-F59E0B?style=flat) ![Support](https://img.shields.io/badge/Support-Redacted_Bundle-6366F1?style=flat)

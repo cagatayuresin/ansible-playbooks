@@ -1,3 +1,9 @@
+---
+title: "30 · check_large_files"
+parent: Playbook Kılavuzları
+nav_order: 30
+---
+
 # 30. Büyük Dosyaları Tespit Etme
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)

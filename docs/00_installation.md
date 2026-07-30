@@ -1,3 +1,8 @@
+---
+title: Kurulum
+nav_order: 2
+---
+
 # Kurulum
 
 Bu depodaki playbook'ları çalıştırmak için Ansible'ın kurulu olduğu bir kontrol makinesi gerekir. Ansible control node **yalnızca Linux/macOS/WSL üzerinde** çalışır — Windows'ta doğrudan çalışmaz (yönetilen/hedef makine Windows olabilir ama kontrol makinesi olamaz).

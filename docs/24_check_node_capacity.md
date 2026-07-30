@@ -1,3 +1,9 @@
+---
+title: "24 · check_node_capacity"
+parent: Playbook Kılavuzları
+nav_order: 24
+---
+
 # 24_check_node_capacity.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)

@@ -1,3 +1,9 @@
+---
+title: "40 · check_node_baseline_drift"
+parent: Playbook Kılavuzları
+nav_order: 40
+---
+
 # 40_check_node_baseline_drift.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Linux](https://img.shields.io/badge/Linux-Baseline_Drift-FCC624?style=flat)

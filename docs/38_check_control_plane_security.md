@@ -1,3 +1,9 @@
+---
+title: "38 · check_control_plane_security"
+parent: Playbook Kılavuzları
+nav_order: 38
+---
+
 # 38_check_control_plane_security.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Security](https://img.shields.io/badge/Security-Control--Plane-7C3AED?style=flat)

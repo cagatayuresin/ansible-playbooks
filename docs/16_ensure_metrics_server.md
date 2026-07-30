@@ -1,3 +1,9 @@
+---
+title: "16 · ensure_metrics_server"
+parent: Playbook Kılavuzları
+nav_order: 16
+---
+
 # 16_ensure_metrics_server.yml - Kullanım Kılavuzu
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)

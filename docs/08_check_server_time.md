@@ -1,3 +1,9 @@
+---
+title: "08 · check_server_time"
+parent: Playbook Kılavuzları
+nav_order: 8
+---
+
 # 08_check_server_time.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)

@@ -1,3 +1,9 @@
+---
+title: "03 · check_docker_containers"
+parent: Playbook Kılavuzları
+nav_order: 3
+---
+
 # 03_check_docker_containers.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Docker](https://img.shields.io/badge/Runtime-Docker-2496ED?style=flat&logo=docker&logoColor=white)

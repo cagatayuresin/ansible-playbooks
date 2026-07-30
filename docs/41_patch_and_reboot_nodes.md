@@ -1,3 +1,9 @@
+---
+title: "41 · patch_and_reboot_nodes"
+parent: Playbook Kılavuzları
+nav_order: 41
+---
+
 # 41_patch_and_reboot_nodes.yml - Kullanım Kılavuzu
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![Maintenance](https://img.shields.io/badge/Maintenance-Serial_1-F59E0B?style=flat)

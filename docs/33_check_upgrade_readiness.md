@@ -1,3 +1,9 @@
+---
+title: "33 · check_upgrade_readiness"
+parent: Playbook Kılavuzları
+nav_order: 33
+---
+
 # 33_check_upgrade_readiness.yml - Kullanım Kılavuzu
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Kubernetes](https://img.shields.io/badge/Kubernetes-Upgrade_Readiness-326CE5?style=flat)
