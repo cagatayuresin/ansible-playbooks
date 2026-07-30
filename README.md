@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-[![CI](https://github.com/kullanici/repo/actions/workflows/ci.yml/badge.svg)](https://github.com/kullanici/repo/actions)
+[![CI](https://github.com/cagatayuresin/ansible-playbooks/actions/workflows/ci.yml/badge.svg)](https://github.com/kullanici/repo/actions)
 [![Docs](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://kullanici.github.io/repo/)
 
 ![Ansible](https://img.shields.io/badge/Ansible-E3000F?style=flat&logo=ansible&logoColor=white)
