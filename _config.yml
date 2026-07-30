@@ -1,0 +1,3 @@
+title: Ansible Playbooks
+description: Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonu.
+theme: jekyll-theme-minimal

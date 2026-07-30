@@ -1,6 +1,17 @@
 # Ansible Playbooks
 
-Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonu.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+[![CI](https://github.com/kullanici/repo/actions/workflows/ci.yml/badge.svg)](https://github.com/kullanici/repo/actions)
+[![Docs](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://kullanici.github.io/repo/)
+
+![Ansible](https://img.shields.io/badge/Ansible-E3000F?style=flat&logo=ansible&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat&logo=kubernetes&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+
+Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonu. 
+
+Tüm playbook'ların detaylı kullanım kılavuzlarına **[GitHub Pages Dokümantasyonu](https://kullanici.github.io/repo/)** üzerinden erişebilirsiniz.
 
 ## Kurulum
 
@@ -9,16 +20,17 @@ Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bak
 Hızlı başlangıç:
 
 ```bash
-ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/01_check_pod_health.yml
+ansible-playbook -i inventories-example/musteri_a/hosts.ini playbooks/01_check_pod_health.yml
 ```
 
 ## Yapı
 
 ```
-playbooks/       Playbook dosyaları (01-28, numaralandırılmış)
-playbooks/tasks/ Paylaşılan/tekrar kullanılan görev listeleri (import_tasks ile çağrılır)
-inventories/     Ortam bazlı inventory'ler (musteri_a örnek olarak repoda, diğerleri gitignore'lu)
-docs/            Her playbook için kullanım kılavuzu (numarayla eşleşir)
+playbooks/           Playbook dosyaları (01-28, numaralandırılmış)
+playbooks/tasks/     Paylaşılan/tekrar kullanılan görev listeleri (import_tasks ile çağrılır)
+inventories-example/ Örnek inventory dosyaları (musteri_a örnek olarak repoda)
+inventories/         Gerçek ortam inventory'leri (tümü gitignore'lu)
+docs/                Her playbook için kullanım kılavuzu (numarayla eşleşir)
 ```
 
 ## Playbook'lar
@@ -63,7 +75,7 @@ Her push/PR'da [GitHub Actions](.github/workflows/ci.yml) ile `yamllint` + `ansi
 
 ## Inventory'ler
 
-- `inventories/musteri_a/` — repoda tutulan örnek inventory (placeholder host/şifre değerleriyle).
-- Diğer gerçek müşteri/production ortam inventory'leri `.gitignore` ile bu repodan hariç tutulmuştur, sadece yerel olarak bulunur.
+- `inventories-example/` — Repoda tutulan örnek inventory dosyaları (örn: `musteri_a` placeholder host/şifre değerleriyle).
+- `inventories/` — Gerçek müşteri/production ortam inventory'leri için ayrılmıştır. Bu klasörün tamamı `.gitignore` ile repodan hariç tutulmuştur ve sadece yerel olarak bulunur.
 
-Kendi ortamınız için `musteri_a/hosts.ini`'yi örnek alıp `inventories/` altında yeni bir klasör oluşturun.
+Kendi ortamınız için `inventories-example/musteri_a/hosts.ini`'yi örnek alıp `inventories/` altında yeni bir klasör oluşturabilirsiniz.
