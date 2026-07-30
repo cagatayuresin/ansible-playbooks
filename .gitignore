@@ -23,7 +23,5 @@ Thumbs.db
 # Claude Code oturum durumu (yerel, repoya ait değil)
 .claude/
 
-# Gerçek müşteri/production inventory'leri - repoda sadece musteri_a örnek olarak kalır
-inventories/musteri_b/
-inventories/detay_sivas_llmserver/
-inventories/cagatayuresincom/
+# Bütün inventory'ler (gerçek veriler) ignore ediliyor. Örnekler inventories-example/ klasöründedir.
+inventories/
