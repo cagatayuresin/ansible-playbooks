@@ -1,0 +1,42 @@
+# Ansible Playbooks Dokümantasyonu
+
+Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonuna hoş geldiniz.
+
+## Başlangıç
+
+- [Kurulum Talimatları](00_installation.md)
+
+## Playbook Kılavuzları
+
+| # | Kılavuz |
+|---|---|
+| 01 | [check_pod_health](01_check_pod_health.md) |
+| 02 | [check_open_nodeports](02_check_open_nodeports.md) |
+| 03 | [check_docker_containers](03_check_docker_containers.md) |
+| 04 | [check_k8s_versions](04_check_k8s_versions.md) |
+| 05 | [check_k8s_services](05_check_k8s_services.md) |
+| 06 | [update_k8s_services](06_update_k8s_services.md) |
+| 07 | [check_calico](07_check_calico.md) |
+| 08 | [check_server_time](08_check_server_time.md) |
+| 09 | [set_server_timezone](09_set_server_timezone.md) |
+| 10 | [check_system_health](10_check_system_health.md) |
+| 11 | [check_monitoring_tools](11_check_monitoring_tools.md) |
+| 12 | [get_argocd_password](12_get_argocd_password.md) |
+| 13 | [check_journal_errors](13_check_journal_errors.md) |
+| 14 | [check_metrics_server](14_check_metrics_server.md) |
+| 15 | [get_metrics_server_stats](15_get_metrics_server_stats.md) |
+| 16 | [ensure_metrics_server](16_ensure_metrics_server.md) |
+| 17 | [check_container_images](17_check_container_images.md) |
+| 18 | [prune_unused_images](18_prune_unused_images.md) |
+| 19 | [check_network_connectivity](19_check_network_connectivity.md) |
+| 20 | [check_host_ports_firewall](20_check_host_ports_firewall.md) |
+| 21 | [check_tls_certificates](21_check_tls_certificates.md) |
+| 22 | [check_k8s_warning_events](22_check_k8s_warning_events.md) |
+| 23 | [check_storage_health](23_check_storage_health.md) |
+| 24 | [check_node_capacity](24_check_node_capacity.md) |
+| 25 | [check_etcd_controlplane](25_check_etcd_controlplane.md) |
+| 26 | [check_cronjobs_jobs](26_check_cronjobs_jobs.md) |
+| 27 | [check_cluster_dns](27_check_cluster_dns.md) |
+| 28 | [check_network_policies](28_check_network_policies.md) |
+
+*(Ana repoya dönmek için [GitHub Deposuna Gidin](https://github.com/cagatayuresin/ansible-playbooks))*
