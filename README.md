@@ -2,8 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-[![CI](https://github.com/cagatayuresin/ansible-playbooks/actions/workflows/ci.yml/badge.svg)](https://github.com/kullanici/repo/actions)
-[![Docs](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://kullanici.github.io/repo/)
+[![CI](https://github.com/cagatayuresin/ansible-playbooks/actions/workflows/ci.yml/badge.svg)](https://github.com/cagatayuresin/ansible-playbooks/actions)
+[![Docs](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://cagatayuresin.github.io/ansible-playbooks/)
 
 ![Ansible](https://img.shields.io/badge/Ansible-E3000F?style=flat&logo=ansible&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat&logo=kubernetes&logoColor=white)
@@ -13,7 +13,7 @@
 
 Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonu. 
 
-Tüm playbook'ların detaylı kullanım kılavuzlarına **[GitHub Pages Dokümantasyonu](https://kullanici.github.io/repo/)** üzerinden erişebilirsiniz.
+Tüm playbook'ların detaylı kullanım kılavuzlarına **[GitHub Pages Dokümantasyonu](https://cagatayuresin.github.io/ansible-playbooks/)** üzerinden erişebilirsiniz.
 
 ## Kurulum
 
@@ -30,6 +30,7 @@ ansible-playbook -i inventories-example/musteri_a/hosts.ini playbooks/01_check_p
 ```
 playbooks/           Playbook dosyaları (01-28, numaralandırılmış)
 playbooks/tasks/     Paylaşılan/tekrar kullanılan görev listeleri (import_tasks ile çağrılır)
+playbooks/files/     Hedef sunuculara kopyalanacak statik betik ve yapılandırma dosyaları
 inventories-example/ Örnek inventory dosyaları (musteri_a örnek olarak repoda)
 inventories/         Gerçek ortam inventory'leri (tümü gitignore'lu)
 docs/                Her playbook için kullanım kılavuzu (numarayla eşleşir)
