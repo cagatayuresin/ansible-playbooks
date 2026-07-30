@@ -1,0 +1,18 @@
+---
+- name: Kubernetes sürüm politikasını test et
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    current_kube_version: "v1.33.7"
+    kubeadm_version:
+      rc: 0
+      stdout: "{{ current_kube_version }}"
+
+  tasks:
+    - name: Hedef sürüm biçimini doğrula
+      import_tasks: ../playbooks/tasks/validate_kube_version.yml
+
+    - name: Yükseltme aralığını doğrula
+      import_tasks: ../playbooks/tasks/validate_kube_upgrade_range.yml

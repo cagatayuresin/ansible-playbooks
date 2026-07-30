@@ -70,11 +70,19 @@ Ansible'ı doğrudan bir Linux sunucusunda veya VM'de (VirtualBox, Hyper-V, bulu
    git clone <repo-url>
    cd ansible-playbooks
    ```
-2. Örnek inventory ile bir playbook'u deneyin:
+2. Örnek inventory'yi gerçek ortam dizinine kopyalayın:
    ```bash
+   mkdir -p inventories/musteri_a
+   cp inventories-example/musteri_a/hosts.ini inventories/musteri_a/hosts.ini
+   ```
+3. `inventories/musteri_a/hosts.ini` içindeki örnek host/IP/kimlik bilgilerini kendi ortamınıza göre düzenleyin. SSH varsayılan 22 dışında bir port kullanıyorsa `ansible_port=1993` gibi ekleyin.
+4. Inventory'yi doğrulayıp ilk playbook'u çalıştırın:
+   ```bash
+   ansible-inventory -i inventories/musteri_a/hosts.ini --graph
    ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/01_check_pod_health.yml
    ```
-3. Kendi ortamınız için `inventories/` altında yeni bir klasör oluşturup `musteri_a/hosts.ini`'yi örnek alarak kendi host/IP/kimlik bilgilerinizi girin. SSH varsayılan 22 dışında bir port kullanıyorsa `ansible_port=1993` gibi ekleyin. Gerçek müşteri/production ortam inventory'leri bilinçli olarak `.gitignore` ile bu repodan hariç tutulmuştur.
+
+Gerçek müşteri/production ortam inventory'leri bilinçli olarak `.gitignore` ile bu repodan hariç tutulmuştur.
 
 ## Playbook Dokümantasyonu
 

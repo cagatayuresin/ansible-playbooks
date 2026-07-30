@@ -1,0 +1,34 @@
+---
+- name: Kubernetes Control-Plane Güvenlik Yapılandırması
+  hosts: master:singlenode
+  gather_facts: true
+
+  vars:
+    first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
+    control_plane_security_fail_on_critical: false
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Control-plane güvenlik analizini çalıştır
+      become: true
+      script: files/control_plane_security_check.py
+      register: control_plane_security_result
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == first_control_plane
+
+    - name: Control-plane güvenlik raporu
+      debug:
+        msg: "{{ control_plane_security_result.stdout | default(control_plane_security_result.stderr | default('Rapor üretilemedi')) }}"
+      when: inventory_hostname == first_control_plane
+
+    - name: Kritik control-plane güvenlik bulgularında durdur
+      fail:
+        msg: "Control-plane yapılandırmasında kritik güvenlik bulguları var."
+      when:
+        - inventory_hostname == first_control_plane
+        - control_plane_security_fail_on_critical | bool
+        - control_plane_security_result.rc | default(1) != 0

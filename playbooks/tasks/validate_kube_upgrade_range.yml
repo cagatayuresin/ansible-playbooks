@@ -1,0 +1,39 @@
+---
+- name: Mevcut kubeadm sürümü okunabilmeli
+  assert:
+    that:
+      - kubeadm_version.rc == 0
+      - (kubeadm_version.stdout | trim) is match('^v[0-9]+\.[0-9]+\.[0-9]+([+-].*)?$')
+    fail_msg: >-
+      Mevcut kubeadm sürümü güvenilir biçimde okunamadı; güvenli yükseltme
+      aralığı doğrulanamadığı için bu node üzerinde işlem durduruldu.
+
+- name: Mevcut ve hedef Kubernetes sürüm bileşenlerini hazırla
+  set_fact:
+    current_kube_version_parts: >-
+      {{
+        (
+          kubeadm_version.stdout
+          | trim
+          | regex_replace('^v', '')
+          | regex_replace('[+-].*$', '')
+        ).split('.')
+        | map('int')
+        | list
+      }}
+    target_kube_version_parts: "{{ kube_version.split('.') | map('int') | list }}"
+
+- name: Kubernetes yükseltme aralığını doğrula
+  assert:
+    that:
+      - target_kube_version_parts[0] == current_kube_version_parts[0]
+      - target_kube_version_parts[1] >= current_kube_version_parts[1]
+      - target_kube_version_parts[1] <= current_kube_version_parts[1] + 1
+      - >-
+        target_kube_version_parts[1] > current_kube_version_parts[1]
+        or target_kube_version_parts[2] >= current_kube_version_parts[2]
+    fail_msg: >-
+      Desteklenmeyen yükseltme: mevcut {{ kubeadm_version.stdout | trim }},
+      hedef v{{ kube_version }}. Major sürüm değiştirilemez, minor sürüm
+      düşürülemez veya birden fazla artırılamaz ve aynı minor içinde patch
+      sürümü düşürülemez.

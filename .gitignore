@@ -33,3 +33,6 @@ k8s-deployment-script-main/
 # Multipass test dosyaları
 setup_multipass.sh
 inventory_multipass.ini
+
+# Yerel support bundle çıktıları hassas sistem bilgisi içerebilir
+support-bundles/

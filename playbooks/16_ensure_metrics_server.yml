@@ -7,8 +7,10 @@
 
   vars:
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
-    # --extra-vars ile değiştirilebilir
-    metrics_server_manifest_url: "https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml"
+    # Tekrarlanabilir kurulum için release sabitlenmiştir; --extra-vars ile değiştirilebilir.
+    metrics_server_version: "v0.8.1"
+    metrics_server_manifest_url: >-
+      https://github.com/kubernetes-sigs/metrics-server/releases/download/{{ metrics_server_version }}/components.yaml
     # On-prem / self-signed kubelet sertifikaları için genelde gerekir
     metrics_server_kubelet_insecure_tls: true
 

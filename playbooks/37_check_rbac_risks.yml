@@ -1,0 +1,31 @@
+---
+- name: Kubernetes RBAC Risk Kontrolü
+  hosts: master:singlenode
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
+
+  vars:
+    first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
+    rbac_risks_excluded_namespaces: "kube-system,kube-public,kube-node-lease"
+    rbac_risks_max_findings: 400
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: RBAC risk analizini çalıştır
+      script: >-
+        files/k8s_rbac_risks_check.py
+        --exclude-namespaces {{ rbac_risks_excluded_namespaces | quote }}
+        --max-findings {{ rbac_risks_max_findings | string | quote }}
+      register: rbac_risks_result
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == first_control_plane
+
+    - name: RBAC risk raporu
+      debug:
+        msg: "{{ rbac_risks_result.stdout | default(rbac_risks_result.stderr | default('Rapor üretilemedi')) }}"
+      when: inventory_hostname == first_control_plane

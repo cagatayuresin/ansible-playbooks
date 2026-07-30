@@ -22,12 +22,20 @@
 
 | Değişken | Varsayılan | Açıklama |
 |---|---|---|
-| `metrics_server_manifest_url` | GitHub `latest` `components.yaml` | Uygulanacak manifest |
+| `metrics_server_version` | `v0.8.1` | Tekrarlanabilir kurulum için sabitlenmiş release |
+| `metrics_server_manifest_url` | GitHub `v0.8.1/components.yaml` | Uygulanacak manifest; iç mirror veya hedef host'taki yerel dosya yolu ile değiştirilebilir |
 | `metrics_server_kubelet_insecure_tls` | `true` | On-prem’de çoğu zaman şart; cloud’da `false` yapılabilir |
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/16_ensure_metrics_server.yml \
   --extra-vars 'metrics_server_kubelet_insecure_tls=false'
+```
+
+Tamamen kapalı bir ağda manifesti ilk control-plane host'una kopyalayıp yerel yolu verin:
+
+```bash
+ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/16_ensure_metrics_server.yml \
+  --extra-vars 'metrics_server_manifest_url=/opt/k8s-manifests/metrics-server-v0.8.1.yaml'
 ```
 
 ## Çalıştırma
@@ -40,4 +48,5 @@ ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/16_ensure_m
 
 - k3s bazen metrics-server’ı kendisi getirir; hazırsa bu playbook sadece top raporlar.
 - `--kubelet-insecure-tls` kubelet sertifika doğrulamasını gevşetir; lab/on-prem için yaygın, sıkı prod’da alternatif (doğru CA) tercih edilir.
-- Manifest URL’ini sabitlemek istersen spesifik release tag’i ver.
+- Metrics Server `0.8.x`, Kubernetes `1.31+` sürümlerini destekler. Kubernetes `1.27-1.30` için `v0.7.2` manifestini açıkça belirtin.
+- Sürüm yükseltirken hem `metrics_server_version` hem de gerekirse özel `metrics_server_manifest_url` değerini birlikte güncelleyin.

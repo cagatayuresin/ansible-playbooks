@@ -27,7 +27,8 @@ Güncelleme öncesi ve sonrası sürümler, [04_check_k8s_versions.yml](../playb
 
 ## Gereksinimler / Ön Koşullar
 
-- **`kube_version` değişkeni zorunludur** (ör. `1.34.3`), varsayılan/otomatik "latest" YOKTUR. kubeadm resmi kısıtı gereği **tek seferde yalnızca bir minor sürüm ileri gidilebilir** (ör. 1.33.x → 1.34.x); birden fazla minor atlamak cluster'ı bozabilir.
+- **`kube_version` değişkeni zorunludur** ve tam olarak `X.Y.Z` biçiminde olmalıdır (ör. `1.34.3`); varsayılan/otomatik "latest" YOKTUR.
+- Playbook mevcut `kubeadm` sürümünü okuyup yükseltme aralığını işlem öncesinde doğrular: major değişikliği, sürüm düşürme ve birden fazla minor atlama reddedilir. Aynı minor içinde yalnızca aynı veya daha yeni patch'e, farklı minor için yalnızca bir sonraki minor'e izin verilir.
 - **Yeni bir minor sürüme geçiyorsanız**, playbook'u çalıştırmadan ÖNCE `/etc/apt/sources.list.d/kubernetes.list` dosyasını hedef minor'ün resmi reposuna (`https://pkgs.k8s.io/core:/stable:/v1.XX/deb/`) manuel olarak güncelleyip `apt-get update` çalıştırmanız gerekir — bu playbook apt repo dosyanıza dokunmaz (farklı kurulumlarda keyring/dosya yapısı farklı olabileceği için otomatik değiştirmek riskli bulundu).
 - `become: true` (sudo) kullanılır — `ansible_become_pass` inventory'de tanımlı olmalı.
 - Node drain/uncordon işlemleri ilk control-plane node'a `delegate_to` ile, `become: true` (root) altında çalışır; bu yüzden `KUBECONFIG=/etc/kubernetes/admin.conf` doğrudan task'a `environment:` olarak verilir (root kullanıcısının kendi `~/.kube/config`'i genelde olmadığı için).

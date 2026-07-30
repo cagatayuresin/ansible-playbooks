@@ -1,0 +1,45 @@
+---
+- name: Kubernetes Yükseltme Hazırlık Kontrolü
+  hosts: master:singlenode
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
+
+  vars:
+    first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
+    upgrade_readiness_target_version: ""
+    upgrade_readiness_backup_directory: "/var/backups/etcd"
+    upgrade_readiness_max_backup_age_hours: 24
+    upgrade_readiness_max_disk_percent: 85
+    upgrade_readiness_fail_on_blockers: true
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Kubernetes yükseltme hazırlık analizini çalıştır
+      become: true
+      script: >-
+        files/k8s_upgrade_readiness_check.py
+        --target-version {{ upgrade_readiness_target_version | quote }}
+        --backup-dir {{ upgrade_readiness_backup_directory | quote }}
+        --max-backup-age-hours {{ upgrade_readiness_max_backup_age_hours | string | quote }}
+        --max-disk-percent {{ upgrade_readiness_max_disk_percent | string | quote }}
+      register: upgrade_readiness_result
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == first_control_plane
+
+    - name: Kubernetes yükseltme hazırlık raporu
+      debug:
+        msg: "{{ upgrade_readiness_result.stdout | default(upgrade_readiness_result.stderr | default('Rapor üretilemedi')) }}"
+      when: inventory_hostname == first_control_plane
+
+    - name: Yükseltme engelleri varsa playbook'u durdur
+      fail:
+        msg: "Kubernetes yükseltmesi için engelleyici bulgular var."
+      when:
+        - inventory_hostname == first_control_plane
+        - upgrade_readiness_fail_on_blockers | bool
+        - upgrade_readiness_result.rc | default(1) != 0

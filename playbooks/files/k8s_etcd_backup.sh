@@ -2,17 +2,35 @@
 # etcd Backup Script
 # Detects k3s or standard kubeadm/etcd and creates a snapshot.
 
+umask 077
+
 BACKUP_DIR="/var/backups/etcd"
+RETENTION_DAYS="${ETCD_BACKUP_RETENTION_DAYS:-30}"
+
+if ! [[ "$RETENTION_DAYS" =~ ^[1-9][0-9]*$ ]]; then
+    echo "FAILED: ETCD_BACKUP_RETENTION_DAYS must be a positive integer."
+    exit 1
+fi
+
 mkdir -p "$BACKUP_DIR"
+chmod 0700 "$BACKUP_DIR"
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_FILE="${BACKUP_DIR}/etcd_snapshot_${TIMESTAMP}.db"
+
+secure_and_prune_backups() {
+    find "$BACKUP_DIR" -maxdepth 1 -type f -name 'etcd_snapshot_*' -exec chmod 0600 {} +
+    find "$BACKUP_DIR" -maxdepth 1 -type f -name 'etcd_snapshot_*' \
+        -mtime "+${RETENTION_DAYS}" -print -delete
+    echo "Retention: snapshots older than ${RETENTION_DAYS} days were removed."
+}
 
 # Check for k3s
 if command -v k3s >/dev/null 2>&1; then
     echo "k3s detected. Running k3s etcd-snapshot..."
     OUTPUT=$(k3s etcd-snapshot save --dir "$BACKUP_DIR" --name "etcd_snapshot_${TIMESTAMP}" 2>&1)
     if [ $? -eq 0 ]; then
+        secure_and_prune_backups
         echo "SUCCESS: k3s etcd snapshot saved to $BACKUP_DIR"
     else
         if echo "$OUTPUT" | grep -q "etcd datastore disabled"; then
@@ -42,6 +60,7 @@ if [ -f "/etc/kubernetes/admin.conf" ] && command -v kubectl >/dev/null 2>&1; th
         
         if [ $? -eq 0 ] && [ -f "$TEMP_BACKUP" ]; then
             mv "$TEMP_BACKUP" "$BACKUP_FILE"
+            secure_and_prune_backups
             echo "SUCCESS: kubeadm etcd snapshot saved to $BACKUP_FILE"
             exit 0
         else
@@ -66,6 +85,7 @@ if command -v etcdctl >/dev/null 2>&1; then
           snapshot save "$BACKUP_FILE" 2>&1)
           
         if [ $? -eq 0 ]; then
+            secure_and_prune_backups
             echo "SUCCESS: etcd snapshot saved to $BACKUP_FILE"
         else
             echo "FAILED: etcdctl snapshot failed. Details: $OUTPUT"

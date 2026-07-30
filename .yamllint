@@ -14,3 +14,5 @@ rules:
 
 ignore: |
   .github/
+  detay-playbooks/
+  k8s-deployment-script-main/

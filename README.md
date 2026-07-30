@@ -9,9 +9,9 @@
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat&logo=kubernetes&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
 ![On-Premises](https://img.shields.io/badge/Deployment-On--Prem-4B5563?style=flat)
-![Air-Gapped](https://img.shields.io/badge/Environment-Air--Gapped_Ready-10B981?style=flat)
+![Air-Gapped](https://img.shields.io/badge/Environment-Air--Gap_Friendly-10B981?style=flat)
 
-Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonu. 
+Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonu.
 
 Tüm playbook'ların detaylı kullanım kılavuzlarına **[GitHub Pages Dokümantasyonu](https://cagatayuresin.github.io/ansible-playbooks/)** üzerinden erişebilirsiniz.
 
@@ -28,7 +28,7 @@ ansible-playbook -i inventories-example/musteri_a/hosts.ini playbooks/01_check_p
 ## Yapı
 
 ```
-playbooks/           Playbook dosyaları (01-28, numaralandırılmış)
+playbooks/           Playbook dosyaları (01-42, numaralandırılmış)
 playbooks/tasks/     Paylaşılan/tekrar kullanılan görev listeleri (import_tasks ile çağrılır)
 playbooks/files/     Hedef sunuculara kopyalanacak statik betik ve yapılandırma dosyaları
 inventories-example/ Örnek inventory dosyaları (musteri_a örnek olarak repoda)
@@ -69,15 +69,26 @@ docs/                Her playbook için kullanım kılavuzu (numarayla eşleşir
 | 26 | [check_cronjobs_jobs](playbooks/26_check_cronjobs_jobs.yml) | CronJob envanteri + Failed Job’lar | ✅ |
 | 27 | [check_cluster_dns](playbooks/27_check_cluster_dns.yml) | CoreDNS / cluster DNS | ✅ |
 | 28 | [check_network_policies](playbooks/28_check_network_policies.yml) | NetworkPolicy envanteri | ✅ |
-| 29 | [backup_k8s_etcd](playbooks/29_backup_k8s_etcd.yml) | etcd yedeği (k3s/kubeadm) alır | ✅ |
+| 29 | [backup_k8s_etcd](playbooks/29_backup_k8s_etcd.yml) | etcd yedeği (k3s/kubeadm) alır | ⚠️ Hayır — diske snapshot yazar ve eski yedekleri temizler |
 | 30 | [check_large_files](playbooks/30_check_large_files.yml) | Sistemdeki 1GB+ büyük dosyaları bulur | ✅ |
 | 31 | [check_external_endpoints](playbooks/31_check_external_endpoints.yml) | Dış API/Web servislerine erişimi test eder | ✅ |
+| 32 | [verify_etcd_backup](playbooks/32_verify_etcd_backup.yml) | Son etcd snapshot bütünlüğü ve opsiyonel izole restore testi | ⚠️ Restore testi opsiyonel |
+| 33 | [check_upgrade_readiness](playbooks/33_check_upgrade_readiness.yml) | Kubernetes yükseltme öncesi engel ve deprecated API kontrolü | ✅ |
+| 34 | [check_workload_resilience](playbooks/34_check_workload_resilience.yml) | Probe, resource, replica, PDB ve image dayanıklılık denetimi | ✅ |
+| 35 | [check_service_endpoints](playbooks/35_check_service_endpoints.yml) | Service / EndpointSlice hazır backend sağlığı | ✅ |
+| 36 | [check_pod_security_posture](playbooks/36_check_pod_security_posture.yml) | Pod Security Admission ve container güvenlik duruşu | ✅ |
+| 37 | [check_rbac_risks](playbooks/37_check_rbac_risks.yml) | cluster-admin, wildcard ve privilege escalation RBAC riskleri | ✅ |
+| 38 | [check_control_plane_security](playbooks/38_check_control_plane_security.yml) | API server, audit, encryption-at-rest ve PKI izinleri | ✅ |
+| 39 | [diagnose_unschedulable_pods](playbooks/39_diagnose_unschedulable_pods.yml) | Pending ve başlatılamayan pod kök neden analizi | ✅ |
+| 40 | [check_node_baseline_drift](playbooks/40_check_node_baseline_drift.yml) | Node OS/kernel/cgroup/containerd/kubelet drift karşılaştırması | ✅ |
+| 41 | [patch_and_reboot_nodes](playbooks/41_patch_and_reboot_nodes.yml) | Sıralı drain, paket güncelleme, reboot ve uncordon | ⚠️ Açık onayla değiştirir |
+| 42 | [generate_support_bundle](playbooks/42_generate_support_bundle.yml) | Redakte edilmiş Kubernetes/sistem tanı arşivi | ⚠️ Controller'a arşiv yazar |
 
 Her playbook'un tam kullanım kılavuzu (gereksinimler, örnek çıktı, notlar) `docs/` klasöründe numarayla eşleşen dosyadadır.
 
 ## CI
 
-Her push/PR'da [GitHub Actions](.github/workflows/ci.yml) ile `yamllint` + `ansible-lint` + tüm playbook'lar için `--syntax-check` çalışır.
+Her push/PR'da [GitHub Actions](.github/workflows/ci.yml) ile `yamllint`, `ansible-lint`, örnek inventory doğrulaması, yardımcı betik kontrolleri, doküman eşleşmesi, Kubernetes yükseltme politikası davranış testleri ve tüm playbook'lar için `--syntax-check` çalışır. CI araç sürümleri [requirements-ci.txt](requirements-ci.txt) içinde sabitlenmiştir.
 
 ## Inventory'ler
 
@@ -85,3 +96,5 @@ Her push/PR'da [GitHub Actions](.github/workflows/ci.yml) ile `yamllint` + `ansi
 - `inventories/` — Gerçek müşteri/production ortam inventory'leri için ayrılmıştır. Bu klasörün tamamı `.gitignore` ile repodan hariç tutulmuştur ve sadece yerel olarak bulunur.
 
 Kendi ortamınız için `inventories-example/musteri_a/hosts.ini`'yi örnek alıp `inventories/` altında yeni bir klasör oluşturabilirsiniz.
+
+Air-gap ortamlarda dış kaynağa ihtiyaç duyan kurulum playbook'larının manifest URL'lerini iç mirror veya hedef host'taki önceden kopyalanmış dosya yollarıyla değiştirin. Gerekli container imajlarının da ortamın kendi registry'sinde bulunması gerekir.

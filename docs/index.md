@@ -41,5 +41,16 @@ Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bak
 | 29 | [backup_k8s_etcd](29_backup_k8s_etcd.md) |
 | 30 | [check_large_files](30_check_large_files.md) |
 | 31 | [check_external_endpoints](31_check_external_endpoints.md) |
+| 32 | [verify_etcd_backup](32_verify_etcd_backup.md) |
+| 33 | [check_upgrade_readiness](33_check_upgrade_readiness.md) |
+| 34 | [check_workload_resilience](34_check_workload_resilience.md) |
+| 35 | [check_service_endpoints](35_check_service_endpoints.md) |
+| 36 | [check_pod_security_posture](36_check_pod_security_posture.md) |
+| 37 | [check_rbac_risks](37_check_rbac_risks.md) |
+| 38 | [check_control_plane_security](38_check_control_plane_security.md) |
+| 39 | [diagnose_unschedulable_pods](39_diagnose_unschedulable_pods.md) |
+| 40 | [check_node_baseline_drift](40_check_node_baseline_drift.md) |
+| 41 | [patch_and_reboot_nodes](41_patch_and_reboot_nodes.md) |
+| 42 | [generate_support_bundle](42_generate_support_bundle.md) |
 
 *(Ana repoya dönmek için [GitHub Deposuna Gidin](https://github.com/cagatayuresin/ansible-playbooks))*

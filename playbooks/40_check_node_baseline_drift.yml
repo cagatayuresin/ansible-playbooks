@@ -1,0 +1,72 @@
+---
+- name: Kubernetes ve Linux Node Baseline Drift Kontrolü
+  hosts: all
+  gather_facts: true
+
+  vars:
+    node_baseline_compare_fields:
+      - os_id
+      - os_version
+      - kernel
+      - architecture
+      - cgroup_version
+      - swap_enabled
+      - ip_forward
+      - bridge_nf_iptables
+      - br_netfilter_loaded
+      - overlay_loaded
+      - containerd_version
+      - containerd_config_sha256
+      - containerd_systemd_cgroup
+      - kubelet_version
+      - kubelet_config_sha256
+      - kubelet_cgroup_driver
+      - time_sync_service
+      - reboot_required
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Node baseline verisini topla
+      become: true
+      script: files/node_baseline_collect.py
+      register: node_baseline_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Node baseline verisini fact olarak kaydet
+      set_fact:
+        node_baseline_data: "{{ node_baseline_raw.stdout | from_json }}"
+      when: node_baseline_raw.rc == 0
+
+    - name: Node baseline toplama hatası
+      debug:
+        msg: "{{ node_baseline_raw.stderr | default(node_baseline_raw.stdout | default('Bilinmeyen hata')) }}"
+      when: node_baseline_raw.rc != 0
+
+    - name: Host bazlı node baseline raporu
+      debug:
+        msg: "{{ node_baseline_data | to_nice_json }}"
+      when: node_baseline_data is defined
+
+    - name: Node'lar arası drift özeti
+      debug:
+        msg: >-
+          {{ '[DRIFT]' if (baseline_values | length) > 1 else '[OK]' }}
+          {{ item }} = {{ baseline_values }}
+      vars:
+        baseline_values: >-
+          {{
+            ansible_play_hosts
+            | map('extract', hostvars, 'node_baseline_data')
+            | select('defined')
+            | map(attribute=item, default='TOPLANAMADI')
+            | unique
+            | list
+          }}
+      loop: "{{ node_baseline_compare_fields }}"
+      run_once: true
+      delegate_to: localhost
+      become: false

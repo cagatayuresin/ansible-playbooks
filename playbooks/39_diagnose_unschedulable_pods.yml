@@ -1,0 +1,33 @@
+---
+- name: Kubernetes Pending ve Başlatılamayan Pod Tanısı
+  hosts: master:singlenode
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
+
+  vars:
+    first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
+    pod_diagnostics_excluded_namespaces: ""
+    pod_diagnostics_max_pods: 100
+    pod_diagnostics_events_per_pod: 5
+
+  pre_tasks:
+    - name: Ping pong bağlantı testi
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Pending ve başlatılamayan pod analizini çalıştır
+      script: >-
+        files/k8s_unschedulable_pods_diagnose.py
+        --exclude-namespaces {{ pod_diagnostics_excluded_namespaces | quote }}
+        --max-pods {{ pod_diagnostics_max_pods | string | quote }}
+        --events-per-pod {{ pod_diagnostics_events_per_pod | string | quote }}
+      register: pod_diagnostics_result
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == first_control_plane
+
+    - name: Pod tanı raporu
+      debug:
+        msg: "{{ pod_diagnostics_result.stdout | default(pod_diagnostics_result.stderr | default('Rapor üretilemedi')) }}"
+      when: inventory_hostname == first_control_plane

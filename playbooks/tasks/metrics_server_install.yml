@@ -10,7 +10,12 @@
   when: metrics_server_ready | default(false) | bool
 
 - name: "metrics-server manifestini uygula (Çalışma Şartı: kurulu/hazır OLMAMALI)"
-  command: kubectl apply -f {{ metrics_server_manifest_url }}
+  command:
+    argv:
+      - kubectl
+      - apply
+      - -f
+      - "{{ metrics_server_manifest_url }}"
   register: metrics_server_apply
   changed_when: true
   when: not (metrics_server_ready | default(false) | bool)

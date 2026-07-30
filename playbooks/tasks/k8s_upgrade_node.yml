@@ -21,6 +21,9 @@
     - name: Güncelleme öncesi sürümleri tespit et
       import_tasks: k8s_versions.yml
 
+    - name: Kubernetes yükseltme aralığını doğrula
+      import_tasks: validate_kube_upgrade_range.yml
+
     - name: Güncelleme öncesi sürüm fact'lerini sakla
       set_fact:
         kubelet_version_before: "{{ kubelet_version.stdout | default('bilinmiyor') }}"

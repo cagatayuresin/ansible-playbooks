@@ -5,15 +5,26 @@
 
   vars:
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
+    # Başarılı yedeklemeden sonra bu süreden eski snapshot'lar silinir.
+    etcd_backup_retention_days: 30
 
   pre_tasks:
     - name: Ping pong bağlantı testi
       import_tasks: tasks/ping_pong.yml
 
   tasks:
+    - name: etcd yedek saklama süresini doğrula
+      assert:
+        that:
+          - (etcd_backup_retention_days | string) is match('^[1-9][0-9]*$')
+        fail_msg: "etcd_backup_retention_days pozitif bir tam sayı olmalıdır."
+      when: inventory_hostname == first_control_plane
+
     - name: etcd backup scriptini çalıştır
       become: true
       script: files/k8s_etcd_backup.sh
+      environment:
+        ETCD_BACKUP_RETENTION_DAYS: "{{ etcd_backup_retention_days | string }}"
       register: etcd_backup_result
       changed_when: true
       when: inventory_hostname == first_control_plane
