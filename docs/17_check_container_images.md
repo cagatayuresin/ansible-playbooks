@@ -1,5 +1,7 @@
 # 17_check_container_images.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Docker](https://img.shields.io/badge/Runtime-Docker-2496ED?style=flat&logo=docker&logoColor=white)
+
 ## Amaç
 
 Her host’ta yüklü **container imajlarını** envanterler:

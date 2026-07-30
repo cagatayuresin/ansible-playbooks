@@ -1,5 +1,7 @@
 # 06_update_k8s_services.yml - Kullanım Kılavuzu
 
+![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
+
 ## ⚠️ Bu playbook canlı bir Kubernetes cluster'ını günceller
 
 Salt-okunur değildir; `kubeadm`, `kubelet`, `kubectl`, `containerd` paketlerini gerçekten günceller ve node'ları sırayla drain/uncordon eder. Docker bu playbook'un kapsamında değildir. Calico ayrı bir konu olduğu için [07_check_calico.yml](../playbooks/07_check_calico.yml) içindedir.

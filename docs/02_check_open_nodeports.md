@@ -1,5 +1,7 @@
 # 02_check_open_nodeports.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
+
 ## Amaç
 
 Bu playbook, Kubernetes cluster'ınızda `NodePort` tipiyle dışarıya açılmış olan tüm servisleri tespit eder. Ardından inventory'nizde tanımlı olan sunucu IP adresini (`inventory_hostname`) kullanarak, browser üzerinden doğrudan tıklayıp/kopyalayarak erişebileceğiniz HTTP linklerini (ör. `http://192.168.1.10:31234`) dinamik olarak oluşturur ve ekrana basar.

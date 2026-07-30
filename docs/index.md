@@ -38,5 +38,8 @@ Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bak
 | 26 | [check_cronjobs_jobs](26_check_cronjobs_jobs.md) |
 | 27 | [check_cluster_dns](27_check_cluster_dns.md) |
 | 28 | [check_network_policies](28_check_network_policies.md) |
+| 29 | [backup_k8s_etcd](29_backup_k8s_etcd.md) |
+| 30 | [check_large_files](30_check_large_files.md) |
+| 31 | [check_external_endpoints](31_check_external_endpoints.md) |
 
 *(Ana repoya dönmek için [GitHub Deposuna Gidin](https://github.com/cagatayuresin/ansible-playbooks))*

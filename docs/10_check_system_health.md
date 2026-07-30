@@ -1,5 +1,7 @@
 # 10_check_system_health.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
+
 ## Amaç
 
 Bu playbook, bir sunucunun genel sistem sağlığını raporlar:

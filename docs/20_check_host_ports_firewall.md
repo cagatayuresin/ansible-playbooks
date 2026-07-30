@@ -1,5 +1,7 @@
 # 20_check_host_ports_firewall.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
+
 ## Amaç
 
 Her host’ta:

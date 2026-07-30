@@ -1,5 +1,7 @@
 # 07_check_calico.yml - Kullanım Kılavuzu
 
+![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
+
 ## Amaç
 
 Bu playbook, Calico CNI'nin mevcut sürümünü (`calico-node` DaemonSet image tag'i) raporlar ve isteğe bağlı olarak yeni bir manifest uygulayarak günceller.

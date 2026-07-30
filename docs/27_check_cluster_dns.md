@@ -1,5 +1,7 @@
 # 27_check_cluster_dns.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
+
 ## Amaç
 
 Cluster **içi** DNS (CoreDNS / kube-dns):

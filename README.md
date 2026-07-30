@@ -69,6 +69,9 @@ docs/                Her playbook için kullanım kılavuzu (numarayla eşleşir
 | 26 | [check_cronjobs_jobs](playbooks/26_check_cronjobs_jobs.yml) | CronJob envanteri + Failed Job’lar | ✅ |
 | 27 | [check_cluster_dns](playbooks/27_check_cluster_dns.yml) | CoreDNS / cluster DNS | ✅ |
 | 28 | [check_network_policies](playbooks/28_check_network_policies.yml) | NetworkPolicy envanteri | ✅ |
+| 29 | [backup_k8s_etcd](playbooks/29_backup_k8s_etcd.yml) | etcd yedeği (k3s/kubeadm) alır | ✅ |
+| 30 | [check_large_files](playbooks/30_check_large_files.yml) | Sistemdeki 1GB+ büyük dosyaları bulur | ✅ |
+| 31 | [check_external_endpoints](playbooks/31_check_external_endpoints.yml) | Dış API/Web servislerine erişimi test eder | ✅ |
 
 Her playbook'un tam kullanım kılavuzu (gereksinimler, örnek çıktı, notlar) `docs/` klasöründe numarayla eşleşen dosyadadır.
 

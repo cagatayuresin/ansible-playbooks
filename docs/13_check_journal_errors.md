@@ -1,5 +1,7 @@
 # 13_check_journal_errors.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
+
 ## Amaç
 
 DevOps / SRE teşhisi için her node’da `journalctl` ile:

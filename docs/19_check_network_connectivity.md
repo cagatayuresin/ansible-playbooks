@@ -1,5 +1,7 @@
 # 19_check_network_connectivity.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
+
 ## Amaç
 
 On-prem kurulumlarda (internetli / kısıtlı / air-gap) host’un **ağ ve internet erişim profilini** ayrıntılı raporlar. Salt-okunur; yapılandırma değiştirmez.

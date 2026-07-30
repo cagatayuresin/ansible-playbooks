@@ -1,5 +1,7 @@
 # 08_check_server_time.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
+
 ## Amaç
 
 Bu playbook, sunucunun saat/saat dilimi bilgisini (`timedatectl`) raporlar ve hangi zaman senkronizasyon servisinin kullanıldığını (chrony, systemd-timesyncd, ntpd — hangisi kuruluysa) **dinamik olarak** tespit eder. Sabit bir servis adı varsayılmaz; `service_facts` ile sistemdeki tüm servisler taranıp `chrony|systemd-timesyncd|ntpd` desenine uyanlar bulunur.

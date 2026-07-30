@@ -1,5 +1,7 @@
 # 11_check_monitoring_tools.yml - Kullanım Kılavuzu
 
+![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat)
+
 ## Amaç
 
 Bu playbook iki iş yapar:

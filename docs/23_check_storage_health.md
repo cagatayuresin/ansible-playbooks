@@ -1,5 +1,7 @@
 # 23_check_storage_health.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
+
 ## Amaç
 
 Her host’ta salt-okunur depolama raporu:

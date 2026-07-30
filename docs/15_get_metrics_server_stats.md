@@ -1,5 +1,7 @@
 # 15_get_metrics_server_stats.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
+
 ## Amaç
 
 metrics-server hazırsa `kubectl top` ile **node** ve **pod** CPU/bellek kullanımını okunaklı raporlar. Kurulu değilse kurmaz; uyarı basar (kurulum için 16).

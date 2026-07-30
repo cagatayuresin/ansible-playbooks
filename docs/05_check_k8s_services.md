@@ -1,5 +1,7 @@
 # 05_check_k8s_services.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
+
 ## Amaç
 
 Bu playbook, sistemde bulunan Kubernetes/container ile ilgili tüm systemd servislerini **dinamik olarak** keşfedip (sabit bir liste değil, `kube|containerd|calico|etcd|runc` desenine göre arama) her birinin aktif/enabled durumunu ve son 10 satır logunu raporlar.

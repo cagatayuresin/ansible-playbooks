@@ -1,0 +1,31 @@
+---
+- name: Dış Uç Noktalara (Endpoint) Bağlantı Testi
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # Test edilecek endpoint'lerin listesi
+    endpoints:
+      - name: "Google API"
+        url: "https://www.google.com"
+      - name: "Örnek Endpoint"
+        url: "https://api.github.com"
+
+  tasks:
+    - name: Dış servislere HTTP isteği at ve süreleri ölç
+      uri:
+        url: "{{ item.url }}"
+        method: GET
+        timeout: 5
+        return_content: no
+      register: uri_results
+      loop: "{{ endpoints }}"
+      ignore_errors: true
+
+    - name: Bağlantı Sonuçları Raporu
+      debug:
+        msg: |
+          [{% if item.status | default(0) == 200 %}BAŞARILI{% else %}HATA{% endif %}] {{ item.item.name }} ({{ item.item.url }})
+          Durum Kodu: {{ item.status | default('Bağlantı Hatası') }}
+          Geçen Süre: {{ item.elapsed | default('N/A') }} saniye
+      loop: "{{ uri_results.results }}"

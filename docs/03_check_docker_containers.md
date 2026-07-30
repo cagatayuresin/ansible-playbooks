@@ -1,5 +1,7 @@
 # 03_check_docker_containers.yml - Kullanım Kılavuzu
 
+![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Docker](https://img.shields.io/badge/Runtime-Docker-2496ED?style=flat&logo=docker&logoColor=white)
+
 ## Amaç
 
 Bu playbook, inventory'deki sunucularda Docker'ın kurulu olup olmadığını kontrol eder. Eğer Docker mevcutsa, `docker ps -a` benzeri bir komut çalıştırarak sunucudaki tüm container'ların isimlerini, sağlık durumlarını/ne zamandır ayakta olduklarını (Status/Uptime) ve açık portlarını ekrana tablo düzeninde yazdırır. Ayrıca genel ağa açık olan (0.0.0.0) portlar için tıklanabilir browser linkleri üretir.

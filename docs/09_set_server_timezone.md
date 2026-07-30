@@ -1,5 +1,7 @@
 # 09_set_server_timezone.yml - Kullanım Kılavuzu
 
+![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat)
+
 ## Amaç
 
 Bu playbook, sunucunun saat dilimini `Europe/Istanbul` olarak ayarlar, [08_check_server_time.yml](../playbooks/08_check_server_time.yml) ile bulunan zaman senkronizasyon servislerini (chrony/systemd-timesyncd/ntpd — hangisi kuruluysa) aktif ve açılışta otomatik başlayacak (enabled) hale getirir, ardından `timedatectl` çıktısıyla sonucu doğrular. Tek başına çalıştırıldığında önce `08_check_server_time.yml`'i (`import_playbook` ile) çalıştırarak değişiklik öncesi mevcut durumu raporlar; bulunan servis listesi (`time_services` fact'i) ikinci play'de servisleri aktifleştirmek için tekrar kullanılır.
