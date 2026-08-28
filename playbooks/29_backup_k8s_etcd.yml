@@ -1,26 +1,26 @@
 ---
-- name: Kubernetes etcd Veritabanı Yedeği Alma
+- name: Backup Kubernetes etcd Database
   hosts: master:singlenode
   gather_facts: true
 
   vars:
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
-    # Başarılı yedeklemeden sonra bu süreden eski snapshot'lar silinir.
+    # Snapshots older than this retention window are deleted after a successful backup.
     etcd_backup_retention_days: 30
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: etcd yedek saklama süresini doğrula
+    - name: Validate etcd backup retention
       assert:
         that:
           - (etcd_backup_retention_days | string) is match('^[1-9][0-9]*$')
-        fail_msg: "etcd_backup_retention_days pozitif bir tam sayı olmalıdır."
+        fail_msg: "etcd_backup_retention_days must be a positive integer."
       when: inventory_hostname == first_control_plane
 
-    - name: etcd backup scriptini çalıştır
+    - name: Run etcd backup script
       become: true
       script: files/k8s_etcd_backup.sh
       environment:
@@ -29,11 +29,11 @@
       changed_when: true
       when: inventory_hostname == first_control_plane
 
-    - name: Yedekleme sonucu
+    - name: Backup result
       debug:
         msg:
           - |
             ################################################################################
             # HOST: {{ inventory_hostname }}
             ################################################################################
-          - "{{ etcd_backup_result.stdout_lines | default(['Yedekleme sadece ilk master node üzerinde çalışır.']) }}"
+          - "{{ etcd_backup_result.stdout_lines | default(['Backup runs only on the first master node.']) }}"

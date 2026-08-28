@@ -1,37 +1,38 @@
 ---
+lang: en
 title: "36 · check_pod_security_posture"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 36
 ---
 
-# 36_check_pod_security_posture.yml - Kullanım Kılavuzu
+# 36_check_pod_security_posture.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Security](https://img.shields.io/badge/Security-Pod_Posture-7C3AED?style=flat)
 
-## Amaç
+## Purpose
 
-Namespace Pod Security Admission etiketlerini ve çalışan pod'ların güvenlik bağlamlarını inceler:
+Inspects namespace Pod Security Admission labels and running pods’ security contexts:
 
-- `privileged`, root ve privilege escalation
+- `privileged`, root, and privilege escalation
 - `hostNetwork`, `hostPID`, `hostIPC`, `hostPath`, `hostPort`
-- Ek Linux capability'leri
-- Eksik veya `Unconfined` seccomp
-- Salt-okunur olmayan root filesystem
-- `enforce`, `audit`, `warn` namespace etiketleri
+- Extra Linux capabilities
+- Missing or `Unconfined` seccomp
+- Root filesystem that is not read-only
+- Namespace `enforce`, `audit`, and `warn` labels
 
-Bu kontrol sezgiseldir; Kubernetes admission controller'ın tam politika evaluator'ı değildir.
+This check is heuristic; it is not the full policy evaluator of the Kubernetes admission controller.
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `pod_security_excluded_namespaces` | `kube-system,kube-public,kube-node-lease` | Sistem pod'larını varsayılan rapordan çıkarır |
-| `pod_security_max_findings` | `400` | Maksimum bulgu |
+| `pod_security_excluded_namespaces` | `kube-system,kube-public,kube-node-lease` | Excludes system pods from the default report |
+| `pod_security_max_findings` | `400` | Maximum findings |
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/36_check_pod_security_posture.yml
 ```
 
-Resmi referans: [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/)
+Official reference: [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/)

@@ -1,17 +1,17 @@
 ---
-# Ortak: metrics-server kurulu/hazır mı? Fact üretir.
-# Beklenen play vars: first_control_plane
-# Üretir: kubectl_check, metrics_server_deploy, metrics_server_api,
+# Shared: is metrics-server installed/ready? Produces facts.
+# Expected play vars: first_control_plane
+# Produces: kubectl_check, metrics_server_deploy, metrics_server_api,
 #         metrics_server_pods, metrics_server_ready
 
-- name: "Kubeconfig / kubectl erişim kontrolü (Çalışma Şartı: ilk control-plane node olmalı)"
+- name: "Kubeconfig / kubectl access check (When: must be the first control-plane node)"
   command: kubectl cluster-info
   register: kubectl_check
   ignore_errors: true
   changed_when: false
   check_mode: false
 
-- name: "metrics-server Deployment var mı (Çalışma Şartı: kubectl erişimi olmalı)"
+- name: "Does metrics-server Deployment exist (When: kubectl access is required)"
   command: kubectl -n kube-system get deploy metrics-server -o wide
   register: metrics_server_deploy
   ignore_errors: true
@@ -19,7 +19,7 @@
   check_mode: false
   when: kubectl_check.rc == 0
 
-- name: "metrics.k8s.io APIService Available mı (Çalışma Şartı: kubectl erişimi olmalı)"
+- name: "Is metrics.k8s.io APIService Available (When: kubectl access is required)"
   shell: >
     kubectl get apiservice v1beta1.metrics.k8s.io
     -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
@@ -29,7 +29,7 @@
   check_mode: false
   when: kubectl_check.rc == 0
 
-- name: "metrics-server pod durumu (Çalışma Şartı: kubectl erişimi olmalı)"
+- name: "metrics-server pod status (When: kubectl access is required)"
   command: kubectl -n kube-system get pods -l k8s-app=metrics-server -o wide
   register: metrics_server_pods
   ignore_errors: true
@@ -37,6 +37,6 @@
   check_mode: false
   when: kubectl_check.rc == 0
 
-- name: metrics_server_ready fact'ini ayarla
+- name: Set metrics_server_ready fact
   set_fact:
     metrics_server_ready: "{{ (kubectl_check.rc | default(1) == 0) and (metrics_server_deploy.rc | default(1) == 0) and ((metrics_server_api.stdout | default('') | trim) == 'True') }}"

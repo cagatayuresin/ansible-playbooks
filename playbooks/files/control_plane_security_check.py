@@ -89,16 +89,16 @@ def mode(path: Path) -> int | None:
 def encryption_provider_summary(path: Path) -> tuple[bool, str]:
     text = read_text(path)
     if not text:
-        return False, "encryption provider dosyası okunamadı"
+        return False, "encryption provider file unreadable"
     providers = re.findall(r"^\s*-\s+(aescbc|aesgcm|secretbox|kms|identity)\s*:", text, re.MULTILINE)
     if not providers:
-        return False, "encryption provider listesi bulunamadı"
+        return False, "encryption provider list not found"
     if providers[0] == "identity":
-        return False, "identity ilk provider; yeni veriler şifrelenmeyebilir"
+        return False, "identity is the first provider; new data may not be encrypted"
     strong = {"aescbc", "aesgcm", "secretbox", "kms"}
     if not any(provider in strong for provider in providers):
-        return False, "şifreleme provider'ı bulunamadı"
-    return True, "provider sırası: " + " -> ".join(providers)
+        return False, "encryption provider not found"
+    return True, "provider order: " + " -> ".join(providers)
 
 
 def main() -> int:
@@ -121,19 +121,19 @@ def main() -> int:
         if "kube-apiserver" in line or "k3s server" in line
     )
     if process_lines:
-        sources.append(("çalışan proses", process_lines))
+        sources.append(("running process", process_lines))
 
     combined = "\n".join(text for _, text in sources)
     flags = extract_flags(combined)
     is_k3s = k3s_config.is_file() or "k3s server" in process_lines
 
-    print("KUBERNETES CONTROL-PLANE GÜVENLİK RAPORU")
+    print("KUBERNETES CONTROL-PLANE SECURITY REPORT")
     print("=" * 88)
-    print("Algılanan kaynaklar: " + (", ".join(name for name, _ in sources) or "yok"))
-    print(f"Dağıtım tipi: {'k3s' if is_k3s else 'kubeadm/standart'}")
+    print("Detected sources: " + (", ".join(name for name, _ in sources) or "none"))
+    print(f"Distribution type: {'k3s' if is_k3s else 'kubeadm/standard'}")
 
     if not sources:
-        critical.append("kube-apiserver veya k3s yapılandırması bulunamadı")
+        critical.append("kube-apiserver or k3s configuration not found")
 
     anonymous = parse_bool(flags.get("anonymous-auth"))
     if anonymous is True:
@@ -141,30 +141,30 @@ def main() -> int:
     elif anonymous is False:
         info.append("anonymous-auth=false")
     elif "authentication-config" in flags:
-        info.append("Anonymous erişim structured authentication config ile yönetiliyor")
+        info.append("Anonymous access is managed via structured authentication config")
     else:
-        warnings.append("anonymous-auth açıkça kapatılmamış")
+        warnings.append("anonymous-auth is not explicitly disabled")
 
     authorization = flags.get("authorization-mode", "")
     if "AlwaysAllow" in authorization:
-        critical.append("authorization-mode içinde AlwaysAllow var")
+        critical.append("AlwaysAllow is present in authorization-mode")
     elif authorization:
         modes = {item.strip() for item in authorization.split(",")}
         if not {"Node", "RBAC"}.issubset(modes):
-            warnings.append(f"authorization-mode beklenen Node,RBAC değil: {authorization}")
+            warnings.append(f"authorization-mode is not the expected Node,RBAC: {authorization}")
         else:
             info.append(f"authorization-mode={authorization}")
     elif "authorization-config" in flags:
-        info.append("Structured authorization config kullanılıyor")
+        info.append("Structured authorization config is in use")
     else:
-        warnings.append("authorization-mode/config açıkça tespit edilemedi")
+        warnings.append("authorization-mode/config could not be detected explicitly")
 
     insecure_port = flags.get("insecure-port")
     if insecure_port and insecure_port != "0":
         critical.append(f"insecure-port={insecure_port}")
 
     if parse_bool(flags.get("profiling")) is not False:
-        warnings.append("kube-apiserver profiling açık veya açıkça kapatılmamış")
+        warnings.append("kube-apiserver profiling is enabled or not explicitly disabled")
     else:
         info.append("profiling=false")
 
@@ -173,9 +173,9 @@ def main() -> int:
         for key in ("audit-policy-file", "audit-log-path", "audit-webhook-config-file")
     )
     if audit_enabled:
-        info.append("API audit yapılandırması algılandı")
+        info.append("API audit configuration detected")
     else:
-        warnings.append("API audit policy/backend algılanmadı")
+        warnings.append("API audit policy/backend not detected")
 
     encryption_path_value = flags.get("encryption-provider-config")
     k3s_secrets_encryption = bool(
@@ -190,24 +190,24 @@ def main() -> int:
         else:
             critical.append(summary)
     elif k3s_secrets_encryption:
-        info.append("k3s secrets-encryption etkin")
+        info.append("k3s secrets-encryption is enabled")
     else:
-        warnings.append("Kubernetes Secret encryption-at-rest algılanmadı")
+        warnings.append("Kubernetes Secret encryption-at-rest not detected")
 
     enabled_admission = flags.get("enable-admission-plugins", "")
     disabled_admission = flags.get("disable-admission-plugins", "")
     if "NodeRestriction" in disabled_admission:
-        critical.append("NodeRestriction admission plugin devre dışı")
+        critical.append("NodeRestriction admission plugin is disabled")
     elif enabled_admission and "NodeRestriction" not in enabled_admission:
-        warnings.append("NodeRestriction enable-admission-plugins içinde görünmüyor")
+        warnings.append("NodeRestriction is not listed in enable-admission-plugins")
     elif "NodeRestriction" in enabled_admission:
-        info.append("NodeRestriction admission plugin etkin")
+        info.append("NodeRestriction admission plugin is enabled")
 
     tls_min = flags.get("tls-min-version")
     if tls_min:
         info.append(f"tls-min-version={tls_min}")
     else:
-        warnings.append("tls-min-version açıkça sabitlenmemiş")
+        warnings.append("tls-min-version is not explicitly pinned")
 
     sensitive_files = [
         Path("/etc/kubernetes/admin.conf"),
@@ -219,9 +219,9 @@ def main() -> int:
         if file_mode is None:
             continue
         if file_mode & 0o077:
-            critical.append(f"{path} izinleri geniş: {file_mode:04o}")
+            critical.append(f"{path} permissions are too open: {file_mode:04o}")
         else:
-            info.append(f"{path} izinleri: {file_mode:04o}")
+            info.append(f"{path} permissions: {file_mode:04o}")
 
     for pki_root in (
         Path("/etc/kubernetes/pki"),
@@ -236,11 +236,11 @@ def main() -> int:
                 exposed_keys.append(f"{key_path}:{key_mode:04o}")
         if exposed_keys:
             critical.append(
-                f"{pki_root} altında geniş izinli private key: "
+                f"{pki_root} has overly permissive private key(s): "
                 + ", ".join(exposed_keys[:10])
             )
         else:
-            info.append(f"{pki_root} private key izinleri uygun")
+            info.append(f"{pki_root} private key permissions are appropriate")
 
     print("-" * 88)
     for line in info:
@@ -251,8 +251,8 @@ def main() -> int:
         print(f"[CRITICAL] {line}")
     print("-" * 88)
     print(
-        f"Özet: {len(critical)} kritik, {len(warnings)} uyarı, "
-        f"{len(info)} bilgi"
+        f"Summary: {len(critical)} critical, {len(warnings)} warning(s), "
+        f"{len(info)} info"
     )
     return 2 if critical else 0
 

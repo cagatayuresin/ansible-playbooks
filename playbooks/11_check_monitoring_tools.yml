@@ -1,22 +1,22 @@
 ---
-- name: Sistem İzleme Araçları Kontrolü
+- name: System monitoring tools check
   hosts: all
   gather_facts: true
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
     # ---------- vmstat ----------
-    - name: vmstat kurulu mu kontrol et
+    - name: Check whether vmstat is installed
       command: which vmstat
       register: vmstat_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "vmstat (procps) paketini kur (Çalışma Şartı: kurulu olmamalı)"
+    - name: "Install vmstat (procps) package (When: not installed)"
       become: true
       apt:
         name: procps
@@ -25,14 +25,14 @@
       ignore_errors: true
       when: vmstat_present.rc != 0
 
-    - name: vmstat kurulumunu doğrula
+    - name: Verify vmstat installation
       command: which vmstat
       register: vmstat_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: vmstat ile salt-okunur kontrol
+    - name: Read-only vmstat check
       command: vmstat 1 3
       register: vmstat_output
       changed_when: false
@@ -40,22 +40,22 @@
       check_mode: false
       when: vmstat_ready.rc == 0
 
-    # ---------- iostat + sar (sysstat paketi) ----------
-    - name: iostat kurulu mu kontrol et
+    # ---------- iostat + sar (sysstat package) ----------
+    - name: Check whether iostat is installed
       command: which iostat
       register: iostat_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: sar kurulu mu kontrol et
+    - name: Check whether sar is installed
       command: which sar
       register: sar_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "sysstat paketini kur - iostat ve sar sağlar (Çalışma Şartı: ikisinden biri kurulu olmamalı)"
+    - name: "Install sysstat package - provides iostat and sar (When: either is not installed)"
       become: true
       apt:
         name: sysstat
@@ -64,21 +64,21 @@
       ignore_errors: true
       when: iostat_present.rc != 0 or sar_present.rc != 0
 
-    - name: iostat kurulumunu doğrula
+    - name: Verify iostat installation
       command: which iostat
       register: iostat_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: sar kurulumunu doğrula
+    - name: Verify sar installation
       command: which sar
       register: sar_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: iostat ile salt-okunur kontrol
+    - name: Read-only iostat check
       command: iostat -xz 1 2
       register: iostat_output
       changed_when: false
@@ -86,7 +86,7 @@
       check_mode: false
       when: iostat_ready.rc == 0
 
-    - name: sar ile salt-okunur kontrol
+    - name: Read-only sar check
       command: sar 1 2
       register: sar_output
       changed_when: false
@@ -94,15 +94,15 @@
       check_mode: false
       when: sar_ready.rc == 0
 
-    # ---------- htop (interaktif, sadece kurulum kontrolü) ----------
-    - name: htop kurulu mu kontrol et
+    # ---------- htop (interactive, install check only) ----------
+    - name: Check whether htop is installed
       command: which htop
       register: htop_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "htop paketini kur (Çalışma Şartı: kurulu olmamalı)"
+    - name: "Install htop package (When: not installed)"
       become: true
       apt:
         name: htop
@@ -111,7 +111,7 @@
       ignore_errors: true
       when: htop_present.rc != 0
 
-    - name: htop kurulumunu doğrula
+    - name: Verify htop installation
       command: which htop
       register: htop_ready
       ignore_errors: true
@@ -119,14 +119,14 @@
       check_mode: false
 
     # ---------- dstat ----------
-    - name: dstat kurulu mu kontrol et
+    - name: Check whether dstat is installed
       command: which dstat
       register: dstat_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "dstat paketini kur (Çalışma Şartı: kurulu olmamalı)"
+    - name: "Install dstat package (When: not installed)"
       become: true
       apt:
         name: dstat
@@ -135,14 +135,14 @@
       ignore_errors: true
       when: dstat_present.rc != 0
 
-    - name: dstat kurulumunu doğrula
+    - name: Verify dstat installation
       command: which dstat
       register: dstat_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: dstat ile salt-okunur kontrol
+    - name: Read-only dstat check
       command: dstat -cdngy --nocolor 1 1
       register: dstat_output
       changed_when: false
@@ -151,14 +151,14 @@
       when: dstat_ready.rc == 0
 
     # ---------- iotop ----------
-    - name: iotop kurulu mu kontrol et
+    - name: Check whether iotop is installed
       command: which iotop
       register: iotop_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "iotop paketini kur (Çalışma Şartı: kurulu olmamalı)"
+    - name: "Install iotop package (When: not installed)"
       become: true
       apt:
         name: iotop
@@ -167,14 +167,14 @@
       ignore_errors: true
       when: iotop_present.rc != 0
 
-    - name: iotop kurulumunu doğrula
+    - name: Verify iotop installation
       command: which iotop
       register: iotop_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: iotop ile salt-okunur kontrol
+    - name: Read-only iotop check
       become: true
       command: iotop -b -n 1 -o
       register: iotop_output
@@ -184,14 +184,14 @@
       when: iotop_ready.rc == 0
 
     # ---------- atop ----------
-    - name: atop kurulu mu kontrol et
+    - name: Check whether atop is installed
       command: which atop
       register: atop_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "atop paketini kur (Çalışma Şartı: kurulu olmamalı)"
+    - name: "Install atop package (When: not installed)"
       become: true
       apt:
         name: atop
@@ -200,14 +200,14 @@
       ignore_errors: true
       when: atop_present.rc != 0
 
-    - name: atop kurulumunu doğrula
+    - name: Verify atop installation
       command: which atop
       register: atop_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: atop ile salt-okunur kontrol
+    - name: Read-only atop check
       become: true
       shell: atop 1 1 | awk '/PID.*CMD/{exit} {print}'
       register: atop_output
@@ -217,14 +217,14 @@
       when: atop_ready.rc == 0
 
     # ---------- perf ----------
-    - name: perf kurulu mu kontrol et
+    - name: Check whether perf is installed
       command: which perf
       register: perf_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "perf (linux-tools) paketini kur (Çalışma Şartı: kurulu olmamalı)"
+    - name: "Install perf (linux-tools) package (When: not installed)"
       become: true
       apt:
         name:
@@ -235,14 +235,14 @@
       ignore_errors: true
       when: perf_present.rc != 0
 
-    - name: perf kurulumunu doğrula
+    - name: Verify perf installation
       command: which perf
       register: perf_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: perf ile salt-okunur kontrol
+    - name: Read-only perf check
       become: true
       command: perf stat -a -- sleep 1
       register: perf_output
@@ -251,15 +251,15 @@
       check_mode: false
       when: perf_ready.rc == 0
 
-    # ---------- bpftrace (sadece kurulum + sürüm, izleme betiği çalıştırılmaz) ----------
-    - name: bpftrace kurulu mu kontrol et
+    # ---------- bpftrace (install + version only, no tracing script) ----------
+    - name: Check whether bpftrace is installed
       command: which bpftrace
       register: bpftrace_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "bpftrace paketini kur (Çalışma Şartı: kurulu olmamalı)"
+    - name: "Install bpftrace package (When: not installed)"
       become: true
       apt:
         name: bpftrace
@@ -268,14 +268,14 @@
       ignore_errors: true
       when: bpftrace_present.rc != 0
 
-    - name: bpftrace kurulumunu doğrula
+    - name: Verify bpftrace installation
       command: which bpftrace
       register: bpftrace_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: bpftrace sürümünü al
+    - name: Get bpftrace version
       command: bpftrace --version
       register: bpftrace_output
       changed_when: false
@@ -284,14 +284,14 @@
       when: bpftrace_ready.rc == 0
 
     # ---------- glances ----------
-    - name: glances kurulu mu kontrol et
+    - name: Check whether glances is installed
       command: which glances
       register: glances_present
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: "glances paketini kur (Çalışma Şartı: kurulu olmamalı)"
+    - name: "Install glances package (When: not installed)"
       become: true
       apt:
         name: glances
@@ -300,14 +300,14 @@
       ignore_errors: true
       when: glances_present.rc != 0
 
-    - name: glances kurulumunu doğrula
+    - name: Verify glances installation
       command: which glances
       register: glances_ready
       ignore_errors: true
       changed_when: false
       check_mode: false
 
-    - name: glances ile salt-okunur kontrol
+    - name: Read-only glances check
       shell: timeout 3 glances --stdout now,cpu.total,mem.percent,mem.used,mem.total,load.min1 || true
       register: glances_output
       changed_when: false
@@ -315,9 +315,9 @@
       check_mode: false
       when: glances_ready.rc == 0
 
-    # ---------- Rapor ----------
-    # Çıktı sütunlarının anlamı: docs/11_check_monitoring_tools.md
-    - name: İzleme araçları raporu
+    # ---------- Report ----------
+    # Column meanings: docs/11_check_monitoring_tools.md
+    - name: Monitoring tools report
       vars:
         _vmstat: "{{ ((vmstat_output.stdout | default('')) ~ ('\n' ~ (vmstat_output.stderr | default('')) if (vmstat_output.stderr | default('')) else '')) if vmstat_output is defined else '' }}"
         _iostat: "{{ ((iostat_output.stdout | default('')) ~ ('\n' ~ (iostat_output.stderr | default('')) if (iostat_output.stderr | default('')) else '')) if iostat_output is defined else '' }}"
@@ -335,52 +335,52 @@
             # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
             ################################################################################
           - |
-            === vmstat (CPU/bellek/swap/I/O genel bakış) ===
-            Durum: {{ 'kurulu' if vmstat_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: Son satırlara bak — r/b kuyruk; si/so swap baskısı; us+sy yüksek+id düşük=CPU meşgul; wa yüksek=disk bekliyor
+            === vmstat (CPU/memory/swap/I/O overview) ===
+            Status: {{ 'installed' if vmstat_ready.rc == 0 else 'not installed' }}
+            Note: Look at the last lines — r/b queue; si/so swap pressure; high us+sy + low id = CPU busy; high wa = disk wait
             {{ _vmstat | trim }}
           - |
-            === iostat (disk cihaz I/O) ===
-            Durum: {{ 'kurulu' if iostat_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: İkinci örneğe bak — %util ~100 veya yüksek await = disk darboğazı
+            === iostat (disk device I/O) ===
+            Status: {{ 'installed' if iostat_ready.rc == 0 else 'not installed' }}
+            Note: Look at the second sample — %util ~100 or high await = disk bottleneck
             {{ _iostat | trim }}
           - |
-            === sar (CPU kırılımı) ===
-            Durum: {{ 'kurulu' if sar_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: %user/%system yüksek=CPU; %iowait yüksek=I/O; %steal yüksek=VM komşu gürültüsü
+            === sar (CPU breakdown) ===
+            Status: {{ 'installed' if sar_ready.rc == 0 else 'not installed' }}
+            Note: high %user/%system = CPU; high %iowait = I/O; high %steal = noisy neighbor VM
             {{ _sar | trim }}
           - |
-            === htop (interaktif süreç izleyici) ===
-            Durum: {{ 'kurulu — SSH içinde elle: htop' if htop_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: Otomatik örnek yok (TUI). Anlık kim CPU/RAM yiyor bakmak için.
+            === htop (interactive process viewer) ===
+            Status: {{ 'installed — run manually over SSH: htop' if htop_ready.rc == 0 else 'not installed' }}
+            Note: No automated sample (TUI). Use it to see which process is using CPU/RAM right now.
           - |
-            === dstat (cpu+disk+net tek satır) ===
-            Durum: {{ 'kurulu' if dstat_ready.rc == 0 else 'kurulamadı (bazı yeni Ubuntu sürümlerinde paket kalkmış olabilir)' }}
-            Yorum: Anlık özet; yoksa vmstat+iostat yeterli
+            === dstat (cpu+disk+net one-liner) ===
+            Status: {{ 'installed' if dstat_ready.rc == 0 else 'not installed (package may be gone on newer Ubuntu)' }}
+            Note: Instant summary; vmstat+iostat is enough if missing
             {{ _dstat | trim }}
           - |
-            === iotop (process bazlı disk I/O) ===
-            Durum: {{ 'kurulu' if iotop_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: DISK READ/WRITE yüksek satırlar = disk'i yoran process; boş liste = o anda anlamlı I/O yok
+            === iotop (per-process disk I/O) ===
+            Status: {{ 'installed' if iotop_ready.rc == 0 else 'not installed' }}
+            Note: High DISK READ/WRITE rows = process stressing disk; empty list = no meaningful I/O right now
             {{ _iotop | trim }}
           - |
-            === atop (sistem paneli özeti) ===
-            Durum: {{ 'kurulu' if atop_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: CPU/MEM/DSK/NET blokları; çok veth (k8s) NET'i uzatır — hata değil. Process listesi kesildi.
+            === atop (system panel summary) ===
+            Status: {{ 'installed' if atop_ready.rc == 0 else 'not installed' }}
+            Note: CPU/MEM/DSK/NET blocks; many veth (k8s) interfaces lengthen NET — not an error. Process list truncated.
             {{ _atop | trim }}
           - |
-            === perf (donanım/yazılım sayaçları) ===
-            Durum: {{ 'kurulu' if perf_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: cycles/instructions/cache; VM'de '<not supported>' normaldir, hata değildir
+            === perf (hardware/software counters) ===
+            Status: {{ 'installed' if perf_ready.rc == 0 else 'not installed' }}
+            Note: cycles/instructions/cache; '<not supported>' on a VM is normal, not an error
             {{ _perf | trim }}
           - |
-            === bpftrace (eBPF izleme) ===
-            Durum: {{ ('kurulu, sürüm: ' ~ (bpftrace_output.stdout | default('bilinmiyor') | trim)) if bpftrace_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: Otomatik betik çalıştırılmaz (riskli). Derin kernel/syscall izleme için SSH'te elle kullanılır.
+            === bpftrace (eBPF tracing) ===
+            Status: {{ ('installed, version: ' ~ (bpftrace_output.stdout | default('unknown') | trim)) if bpftrace_ready.rc == 0 else 'not installed' }}
+            Note: No automatic script is run (risky). Use manually over SSH for deep kernel/syscall tracing.
           - |
-            === glances (özet dashboard) ===
-            Durum: {{ 'kurulu' if glances_ready.rc == 0 else 'kurulamadı' }}
-            Yorum: cpu.total / mem.percent / load.min1 — load'u çekirdek sayısıyla karşılaştır
+            === glances (summary dashboard) ===
+            Status: {{ 'installed' if glances_ready.rc == 0 else 'not installed' }}
+            Note: cpu.total / mem.percent / load.min1 — compare load to core count
             {{ _glances | trim }}
           - |
-            Detaylı sütun sözlüğü: docs/11_check_monitoring_tools.md
+            Column glossary: docs/11_check_monitoring_tools.md

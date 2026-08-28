@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes sürüm politikasını test et
+- name: Test Kubernetes version policy
   hosts: localhost
   connection: local
   gather_facts: false
@@ -11,8 +11,8 @@
       stdout: "{{ current_kube_version }}"
 
   tasks:
-    - name: Hedef sürüm biçimini doğrula
+    - name: Validate target version format
       import_tasks: ../playbooks/tasks/validate_kube_version.yml
 
-    - name: Yükseltme aralığını doğrula
+    - name: Validate upgrade range
       import_tasks: ../playbooks/tasks/validate_kube_upgrade_range.yml

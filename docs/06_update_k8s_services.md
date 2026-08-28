@@ -1,64 +1,65 @@
 ---
+lang: en
 title: "06 · update_k8s_services"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 6
 ---
 
-# 06_update_k8s_services.yml - Kullanım Kılavuzu
+# 06_update_k8s_services.yml - Usage Guide
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
 
-## ⚠️ Bu playbook canlı bir Kubernetes cluster'ını günceller
+## ⚠️ This playbook upgrades a live Kubernetes cluster
 
-Salt-okunur değildir; `kubeadm`, `kubelet`, `kubectl`, `containerd` paketlerini gerçekten günceller ve node'ları sırayla drain/uncordon eder. Docker bu playbook'un kapsamında değildir. Calico ayrı bir konu olduğu için [07_check_calico.yml](../playbooks/07_check_calico.yml) içindedir.
+It is not read-only; it actually upgrades the `kubeadm`, `kubelet`, `kubectl`, and `containerd` packages and drain/uncordon nodes one at a time. Docker is out of scope. Calico is covered separately in [07_check_calico.yml](../playbooks/07_check_calico.yml).
 
-Çalıştırmadan önce mutlaka `--check --diff` ile kuru çalıştırma yapın ve önce kritik olmayan bir cluster'da (ör. tek node'luk lab ortamı) deneyin.
+Always dry-run with `--check --diff` first, and try it on a non-critical cluster (for example a single-node lab) before production.
 
-## Amaç ve Yaklaşım
+## Purpose and approach
 
-Kubernetes'in resmi `kubeadm` upgrade akışını izler:
+Follows the official Kubernetes `kubeadm` upgrade flow:
 
-1. **Kontrol düzlemi (`master`/`singlenode`, `serial: 1` — node'lar tek tek işlenir):**
-   - İlk control-plane node: `kubeadm upgrade plan` + `kubeadm upgrade apply v<version>`
-   - Ek control-plane node'lar (varsa): `kubeadm upgrade node`
-   - Node drain edilir (`kubectl drain`, ilk control-plane node üzerinden `delegate_to` ile)
-   - `kubeadm`/`kubelet`/`kubectl` apt paketleri hedef sürüme sabitlenir (`apt-mark hold` ile korunan paketler geçici olarak unhold edilip güncellenir, sonra tekrar hold'a alınır)
-   - `containerd` mevcut apt reposundan en güncel sürüme yükseltilir (k8s sürümüyle sıkı sıkıya versiyon eşleşmesi gerekmediği için "latest" kullanılır)
-   - kubelet yeniden başlatılır, node uncordon edilir
-2. **Worker node'lar (`workers`, `serial: 1`):** Aynı adımlar, ama her zaman `kubeadm upgrade node` (asla `apply`).
+1. **Control plane (`master`/`singlenode`, `serial: 1` — nodes are processed one at a time):**
+   - First control-plane node: `kubeadm upgrade plan` + `kubeadm upgrade apply v<version>`
+   - Additional control-plane nodes (if any): `kubeadm upgrade node`
+   - The node is drained (`kubectl drain`, delegated to the first control-plane node via `delegate_to`)
+   - `kubeadm`/`kubelet`/`kubectl` apt packages are pinned to the target version (packages on `apt-mark hold` are temporarily unheld, upgraded, then held again)
+   - `containerd` is upgraded to the latest version from the current apt repo ("latest" is used because it is not tightly coupled to the Kubernetes version)
+   - kubelet is restarted and the node is uncordoned
+2. **Worker nodes (`workers`, `serial: 1`):** The same steps, but always `kubeadm upgrade node` (never `apply`).
 
-Güncelleme öncesi ve sonrası sürümler, [04_check_k8s_versions.yml](../playbooks/04_check_k8s_versions.yml) ile aynı paylaşılan [tasks/k8s_versions.yml](../playbooks/tasks/k8s_versions.yml) görev listesiyle tespit edilir (kubectl/kubeadm/kubelet/containerd/runc/etcd) — sürüm tespiti iki yerde ayrı ayrı yazılmaz.
+Pre- and post-upgrade versions are collected with the same shared [tasks/k8s_versions.yml](../playbooks/tasks/k8s_versions.yml) task list used by [04_check_k8s_versions.yml](../playbooks/04_check_k8s_versions.yml) (kubectl/kubeadm/kubelet/containerd/runc/etcd) — version detection is not duplicated.
 
-`etcd` ayrıca bir adım gerektirmez — standart kubeadm (stacked etcd) kurulumlarında etcd static pod olarak çalışır ve `kubeadm upgrade apply/node` sırasında otomatik güncellenir.
+`etcd` does not need a separate step — in a standard kubeadm (stacked etcd) install, etcd runs as a static pod and is updated automatically during `kubeadm upgrade apply/node`.
 
-## Gereksinimler / Ön Koşullar
+## Requirements / prerequisites
 
-- **`kube_version` değişkeni zorunludur** ve tam olarak `X.Y.Z` biçiminde olmalıdır (ör. `1.34.3`); varsayılan/otomatik "latest" YOKTUR.
-- Playbook mevcut `kubeadm` sürümünü okuyup yükseltme aralığını işlem öncesinde doğrular: major değişikliği, sürüm düşürme ve birden fazla minor atlama reddedilir. Aynı minor içinde yalnızca aynı veya daha yeni patch'e, farklı minor için yalnızca bir sonraki minor'e izin verilir.
-- **Yeni bir minor sürüme geçiyorsanız**, playbook'u çalıştırmadan ÖNCE `/etc/apt/sources.list.d/kubernetes.list` dosyasını hedef minor'ün resmi reposuna (`https://pkgs.k8s.io/core:/stable:/v1.XX/deb/`) manuel olarak güncelleyip `apt-get update` çalıştırmanız gerekir — bu playbook apt repo dosyanıza dokunmaz (farklı kurulumlarda keyring/dosya yapısı farklı olabileceği için otomatik değiştirmek riskli bulundu).
-- `become: true` (sudo) kullanılır — `ansible_become_pass` inventory'de tanımlı olmalı.
-- Node drain/uncordon işlemleri ilk control-plane node'a `delegate_to` ile, `become: true` (root) altında çalışır; bu yüzden `KUBECONFIG=/etc/kubernetes/admin.conf` doğrudan task'a `environment:` olarak verilir (root kullanıcısının kendi `~/.kube/config`'i genelde olmadığı için).
-- kubeadm kurulu olmayan host'larda (ör. `datanode`) güncelleme adımları otomatik atlanır, hata vermez.
+- The **`kube_version` variable is required** and must be exactly `X.Y.Z` (for example `1.34.3`); there is no default/"latest".
+- The playbook reads the current `kubeadm` version and validates the upgrade window before making changes: major jumps, downgrades, and skipping more than one minor are rejected. Within the same minor, only the same or a newer patch is allowed; for a different minor, only the next minor is allowed.
+- **If you are moving to a new minor**, update `/etc/apt/sources.list.d/kubernetes.list` to the official repo for that minor (`https://pkgs.k8s.io/core:/stable:/v1.XX/deb/`) and run `apt-get update` **before** this playbook — it does not touch your apt repo file (automatically rewriting it was considered risky because keyring/file layout differs across installs).
+- Uses `become: true` (sudo) — `ansible_become_pass` must be set in inventory.
+- Drain/uncordon runs on the first control-plane node via `delegate_to` as `become: true` (root), so `KUBECONFIG=/etc/kubernetes/admin.conf` is set on the task `environment:` (root typically has no `~/.kube/config`).
+- Hosts without kubeadm (for example `datanode`) skip the upgrade steps automatically and do not fail.
 
-## Çalıştırma Komutu
+## How to run
 
 ```bash
-# Önce ne değişeceğini görmek için (ZORUNLU ilk adım):
+# See what would change first (REQUIRED first step):
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/06_update_k8s_services.yml \
   --extra-vars "kube_version=1.34.3" --check --diff
 
-# Gerçekten uygulamak için:
+# Apply for real:
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/06_update_k8s_services.yml \
   --extra-vars "kube_version=1.34.3"
 
-# Tek bir node ile sınırlamak için (ör. önce sadece bir worker'da denemek):
+# Limit to a single node (for example try one worker first):
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/06_update_k8s_services.yml \
   --extra-vars "kube_version=1.34.3" --limit worker1
 ```
 
-## Notlar
+## Notes
 
-- `serial: 1` ile her play'de node'lar teker teker işlenir — cluster'ın tamamı aynı anda güncellenmez, bu yüzden çalışan workload'lar için kesinti minimumda tutulur.
-- Paket sürümü `apt-cache madison` ile tam paket sürüm string'i (ör. `1.34.3-1.1`) bulunarak sabitlenir; sadece `1.34.3` yazmak apt'ta genelde eşleşmez.
-- İlk çalıştırmayı mutlaka `--check --diff` ile ve kritik olmayan bir node/cluster üzerinde yapın.
-- `kubeadm upgrade apply` transient bir hatayla (ör. etcd restart sonrası bağlantı timeout'u) başarısız olursa cluster kısmen güncellenmiş durumda kalabilir; kubeadm bu duruma karşı idempotenttir — playbook'u aynı `kube_version` ile tekrar çalıştırmak, zaten tamamlanmış bileşenleri (ör. etcd) atlayıp kaldığı yerden devam eder.
+- `serial: 1` processes nodes one at a time in each play — the whole cluster is not upgraded at once, so disruption to running workloads is kept to a minimum.
+- The package version is pinned using the full apt version string from `apt-cache madison` (for example `1.34.3-1.1`); writing only `1.34.3` usually does not match in apt.
+- Always do the first run with `--check --diff` on a non-critical node/cluster.
+- If `kubeadm upgrade apply` fails with a transient error (for example a connection timeout after etcd restarts), the cluster can be left partially upgraded. kubeadm is idempotent for this case — re-running the playbook with the same `kube_version` skips components that already completed (for example etcd) and continues from where it stopped.

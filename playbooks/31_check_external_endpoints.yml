@@ -1,18 +1,18 @@
 ---
-- name: Dış Uç Noktalara (Endpoint) Bağlantı Testi
+- name: External Endpoint Connectivity Test
   hosts: localhost
   gather_facts: false
 
   vars:
-    # Test edilecek endpoint'lerin listesi
+    # List of endpoints to test
     endpoints:
       - name: "Google API"
         url: "https://www.google.com"
-      - name: "Örnek Endpoint"
+      - name: "Example Endpoint"
         url: "https://api.github.com"
 
   tasks:
-    - name: Dış servislere HTTP isteği at ve süreleri ölç
+    - name: Send HTTP requests to external services and measure latency
       uri:
         url: "{{ item.url }}"
         method: GET
@@ -22,10 +22,10 @@
       loop: "{{ endpoints }}"
       ignore_errors: true
 
-    - name: Bağlantı Sonuçları Raporu
+    - name: Connectivity results report
       debug:
         msg: |
-          [{% if item.status | default(0) == 200 %}BAŞARILI{% else %}HATA{% endif %}] {{ item.item.name }} ({{ item.item.url }})
-          Durum Kodu: {{ item.status | default('Bağlantı Hatası') }}
-          Geçen Süre: {{ item.elapsed | default('N/A') }} saniye
+          [{% if item.status | default(0) == 200 %}OK{% else %}FAIL{% endif %}] {{ item.item.name }} ({{ item.item.url }})
+          Status code: {{ item.status | default('Connection error') }}
+          Elapsed time: {{ item.elapsed | default('N/A') }} seconds
       loop: "{{ uri_results.results }}"

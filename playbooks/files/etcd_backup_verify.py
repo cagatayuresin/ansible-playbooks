@@ -58,7 +58,7 @@ def newest_snapshot(directory: Path) -> Path:
         if path.is_file() and not path.name.endswith(".part")
     ]
     if not candidates:
-        raise FileNotFoundError(f"{directory} altında etcd_snapshot_* bulunamadı")
+        raise FileNotFoundError(f"no etcd_snapshot_* found under {directory}")
     return max(candidates, key=lambda path: path.stat().st_mtime)
 
 
@@ -71,12 +71,12 @@ def extract_if_needed(snapshot: Path, workspace: Path) -> tuple[Path, str]:
                 if not member.is_dir() and member.file_size > 0
             ]
             if not members:
-                raise RuntimeError("ZIP snapshot içinde doğrulanabilir dosya yok")
+                raise RuntimeError("ZIP snapshot contains no verifiable file")
             member = max(members, key=lambda item: item.file_size)
             extracted = workspace / "snapshot.db"
             with archive.open(member) as source, extracted.open("wb") as target:
                 shutil.copyfileobj(source, target)
-            return extracted, f"ZIP içeriği: {member.filename}"
+            return extracted, f"ZIP contents: {member.filename}"
 
     if tarfile.is_tarfile(snapshot):
         with tarfile.open(snapshot) as archive:
@@ -86,17 +86,17 @@ def extract_if_needed(snapshot: Path, workspace: Path) -> tuple[Path, str]:
                 if member.isfile() and member.size > 0
             ]
             if not members:
-                raise RuntimeError("TAR snapshot içinde doğrulanabilir dosya yok")
+                raise RuntimeError("TAR snapshot contains no verifiable file")
             member = max(members, key=lambda item: item.size)
             extracted = workspace / "snapshot.db"
             source = archive.extractfile(member)
             if source is None:
-                raise RuntimeError("Snapshot arşivi açılamadı")
+                raise RuntimeError("Could not open snapshot archive")
             with source, extracted.open("wb") as target:
                 shutil.copyfileobj(source, target)
-            return extracted, f"TAR içeriği: {member.name}"
+            return extracted, f"TAR contents: {member.name}"
 
-    return snapshot, "Sıkıştırılmamış snapshot"
+    return snapshot, "Uncompressed snapshot"
 
 
 def snapshot_tool() -> str | None:
@@ -135,8 +135,8 @@ def restore_snapshot(tool: str, snapshot: Path, workspace: Path) -> tuple[bool, 
     if result.returncode != 0:
         return False, output[-1000:]
     if not restore_dir.exists() or not any(restore_dir.rglob("*")):
-        return False, "Restore komutu başarılı döndü fakat data-dir boş"
-    return True, output[-1000:] or "İzole restore tamamlandı"
+        return False, "Restore command succeeded but data-dir is empty"
+    return True, output[-1000:] or "Isolated restore completed"
 
 
 def main() -> int:
@@ -151,7 +151,7 @@ def main() -> int:
     directory = Path(args.backup_dir).expanduser().resolve()
 
     if not directory.is_dir():
-        print(f"[CRITICAL] Yedek dizini bulunamadı: {directory}")
+        print(f"[CRITICAL] Backup directory not found: {directory}")
         return 2
 
     try:
@@ -165,27 +165,27 @@ def main() -> int:
     file_mode = stat.S_IMODE(snapshot_stat.st_mode)
     dir_mode = stat.S_IMODE(directory.stat().st_mode)
 
-    print("ETCD YEDEK DOĞRULAMA RAPORU")
+    print("ETCD BACKUP VERIFICATION REPORT")
     print("=" * 72)
     print(f"Snapshot      : {snapshot}")
-    print(f"Boyut         : {human_size(snapshot_stat.st_size)}")
-    print(f"Yaş           : {age_hours:.1f} saat")
+    print(f"Size          : {human_size(snapshot_stat.st_size)}")
+    print(f"Age           : {age_hours:.1f} hours")
     print(f"SHA256        : {sha256_file(snapshot)}")
-    print(f"Dosya izni    : {file_mode:04o}")
-    print(f"Dizin izni    : {dir_mode:04o}")
+    print(f"File mode     : {file_mode:04o}")
+    print(f"Dir mode      : {dir_mode:04o}")
 
     if age_hours > args.max_age_hours:
         problems.append(
-            f"Snapshot {age_hours:.1f} saat yaşında; eşik {args.max_age_hours} saat"
+            f"Snapshot is {age_hours:.1f} hours old; threshold {args.max_age_hours} hours"
         )
     if file_mode & 0o077:
-        problems.append(f"Snapshot grup/diğer kullanıcı erişimine açık: {file_mode:04o}")
+        problems.append(f"Snapshot is group/other-readable: {file_mode:04o}")
     if dir_mode & 0o077:
-        problems.append(f"Yedek dizini grup/diğer kullanıcı erişimine açık: {dir_mode:04o}")
+        problems.append(f"Backup directory is group/other-accessible: {dir_mode:04o}")
 
     tool = snapshot_tool()
     if not tool:
-        problems.append("etcdutl veya etcdctl bulunamadı; snapshot bütünlüğü doğrulanamadı")
+        problems.append("etcdutl or etcdctl not found; snapshot integrity was not verified")
     else:
         with tempfile.TemporaryDirectory(prefix="etcd-verify-") as temp_name:
             workspace = Path(temp_name)
@@ -193,37 +193,37 @@ def main() -> int:
                 candidate, archive_note = extract_if_needed(snapshot, workspace)
                 print(f"Format         : {archive_note}")
                 ok, detail = status_snapshot(tool, candidate)
-                print(f"Status aracı   : {tool}")
-                print(f"Status sonucu  : {'BAŞARILI' if ok else 'BAŞARISIZ'}")
+                print(f"Status tool    : {tool}")
+                print(f"Status result  : {'PASSED' if ok else 'FAILED'}")
                 if detail:
-                    print(f"Status detayı  : {detail}")
+                    print(f"Status detail  : {detail}")
                 if not ok:
-                    problems.append("Snapshot status kontrolü başarısız")
+                    problems.append("Snapshot status check failed")
 
                 if args.restore_test:
                     restored, restore_detail = restore_snapshot(tool, candidate, workspace)
-                    print(f"Restore testi  : {'BAŞARILI' if restored else 'BAŞARISIZ'}")
+                    print(f"Restore test   : {'PASSED' if restored else 'FAILED'}")
                     if restore_detail:
-                        print(f"Restore detayı : {restore_detail}")
+                        print(f"Restore detail : {restore_detail}")
                     if not restored:
-                        problems.append("İzole restore testi başarısız")
+                        problems.append("Isolated restore test failed")
                 else:
                     warnings.append(
-                        "İzole restore testi kapalı; etcd_backup_restore_test=true ile etkinleştirin"
+                        "Isolated restore test is off; enable with etcd_backup_restore_test=true"
                     )
             except (OSError, RuntimeError, zipfile.BadZipFile, tarfile.TarError) as exc:
-                problems.append(f"Snapshot hazırlanamadı: {exc}")
+                problems.append(f"Snapshot could not be prepared: {exc}")
 
-    print("\nSONUÇ")
+    print("\nRESULT")
     print("-" * 72)
     for warning in warnings:
         print(f"[WARN] {warning}")
     for problem in problems:
         print(f"[CRITICAL] {problem}")
     if problems:
-        print(f"Durum: BAŞARISIZ ({len(problems)} kritik bulgu)")
+        print(f"Status: FAILED ({len(problems)} critical finding(s))")
         return 2
-    print("Durum: BAŞARILI")
+    print("Status: PASSED")
     return 0
 
 

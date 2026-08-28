@@ -1,50 +1,51 @@
 ---
+lang: en
 title: "20 · check_host_ports_firewall"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 20
 ---
 
-# 20_check_host_ports_firewall.yml - Kullanım Kılavuzu
+# 20_check_host_ports_firewall.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
 
-## Amaç
+## Purpose
 
-Her host’ta:
+On each host:
 
-1. **Hangi portlar dinleniyor** (`ss -tulnp`)
-2. **Ne şekilde açık** — tüm arayüzler / sadece localhost / belirli IP
-3. **Hangi uygulama** dinliyor (process adı + pid)
-4. **Firewall** — UFW, firewalld (varsa), `iptables` + `nft` özeti; dinlenen portlara değinen kurallar
+1. **Which ports are listening** (`ss -tulnp`)
+2. **How they are open** — all interfaces / localhost only / a specific IP
+3. **Which application** is listening (process name + pid)
+4. **Firewall** — UFW, firewalld (if present), `iptables` + `nft` summary; rules that mention listening ports
 
-Salt-okunur; kural ekleyip silmez. Her host kendi diskindeki / kendi kernel’indeki durumu raporlar (`HOST` başlığı).
+Read-only; does not add or delete rules. Each host reports the state on its own disk / own kernel (`HOST` header).
 
 Script: `playbooks/files/host_ports_firewall_check.py`
 
-## “Nasıl açık?” ne demek?
+## What does “how is it open?” mean?
 
-| BIND | Anlam |
+| BIND | Meaning |
 |---|---|
-| `TUM_ARAYUZLER` | `0.0.0.0` / `::` — dışarıdan erişim **mümkün olabilir** (firewall izin verirse) |
-| `SADECE_LOCALHOST` | Yalnızca local process’ler erişir |
-| `OZEL_IP` / `BELIRLI_IP` | Belirli arayüz IP’sinde dinliyor |
+| `ALL_INTERFACES` | `0.0.0.0` / `::` — external access **may be possible** (if the firewall allows it) |
+| `LOCALHOST_ONLY` | Only local processes can reach it |
+| `PRIVATE_IP` / `SPECIFIC_IP` | Listening on a specific interface IP |
 
-Dinlemek ≠ firewall’ın dışarıya açması. Raporun firewall bölümündeki INPUT policy / UFW / nft kurallarına bak.
+Listening ≠ the firewall opening it to the outside. Check INPUT policy / UFW / nft rules in the firewall section of the report.
 
-## 02 ile farkı
+## Difference from 02
 
-| Playbook | Kapsam |
+| Playbook | Scope |
 |---|---|
-| [02](02_check_open_nodeports.md) | Kubernetes **NodePort** servisleri |
-| **20** | Host OS dinleyen socket’ler + iptables/nft/UFW |
+| [02](02_check_open_nodeports.md) | Kubernetes **NodePort** services |
+| **20** | Host OS listening sockets + iptables/nft/UFW |
 
-## Gereksinimler
+## Requirements
 
 - `hosts: all`
-- `become: true` (süreç adları + iptables/nft için)
+- `become: true` (for process names + iptables/nft)
 - `python3`, `ss` (iproute2)
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/20_check_host_ports_firewall.yml
@@ -52,16 +53,16 @@ ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/20_check_ho
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/20_check_host_ports_firewall.yml --limit workers
 ```
 
-## Çıktı nasıl okunur?
+## How to read the output
 
-1. **Dinleyen portlar** tablosu → port + bind + uygulama
-2. **UFW / firewalld** (kuruluysa)
-3. **iptables/nft** → policy, dinlenen portlara ait `dpt:` / `dport` satırları, NAT özeti
-4. **Risk özeti** → tüm arayüzde dinleyen servis listesi
+1. **Listening ports** table → port + bind + application
+2. **UFW / firewalld** (if installed)
+3. **iptables/nft** → policy, `dpt:` / `dport` lines for listening ports, NAT summary
+4. **Risk summary** → services listening on all interfaces
 
-K8s node’unda kube-proxy/CNI kuralları çok uzun olabilir; rapor ilgili satırları süzerek kısaltır.
+On a K8s node, kube-proxy/CNI rules can be very long; the report filters and shortens relevant lines.
 
-## Notlar
+## Notes
 
-- Process alanı `-` ise izin/root eksik demektir (playbook `become` kullanır).
-- Container içi portlar host’ta `*:` veya CNI IP’sinde görünebilir; uygulama adı `containerd`/`docker-proxy` olabilir.
+- A process field of `-` means missing permission/root (the playbook uses `become`).
+- Ports inside containers may show as `*:` or a CNI IP on the host; the application name may be `containerd`/`docker-proxy`.

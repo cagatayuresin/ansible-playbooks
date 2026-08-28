@@ -4,7 +4,7 @@
   gather_facts: false
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
@@ -14,20 +14,20 @@
       ignore_errors: true
       changed_when: false
 
-    - name: "Get Docker containers info as table (Çalışma Şartı: Docker yüklü olmalı)"
+    - name: "Get Docker containers info as table (When: Docker is installed)"
       command: docker ps -a --format 'table {% raw %}{{.Names}}\t{{.Status}}\t{{.Ports}}{% endraw %}'
       register: docker_ps_table
       when: docker_installed.rc == 0
       changed_when: false
 
-    - name: "Display Docker containers status (Çalışma Şartı: Docker yüklü olmalı ve bilgi alınabilmeli)"
+    - name: "Display Docker containers status (When: Docker is installed and info can be retrieved)"
       debug:
         msg: "{{ docker_ps_table.stdout }}"
       when:
         - docker_installed.rc == 0
         - docker_ps_table.stdout is defined
 
-    - name: "Get Docker containers info as JSON (Çalışma Şartı: Docker yüklü olmalı)"
+    - name: "Get Docker containers info as JSON (When: Docker is installed)"
       command: docker ps -a --format '{% raw %}{{json .}}{% endraw %}'
       register: docker_ps_json
       when: docker_installed.rc == 0
@@ -41,7 +41,7 @@
         - docker_ps_json.stdout is defined
         - docker_ps_json.stdout != ""
 
-    - name: "Generate browser accessible links for containers (Çalışma Şartı: Docker yüklü olmalı)"
+    - name: "Generate browser accessible links for containers (When: Docker is installed)"
       set_fact:
         docker_links: "{{ (docker_links | default([])) + (item.Ports | regex_findall('0\\.0\\.0\\.0:(\\d+)->') | map('regex_replace', '^(.*)$', '- ' + item.Names + ' -> http://' + inventory_hostname + ':\\1') | list) }}"
       loop: "{{ docker_containers | default([]) }}"
@@ -51,15 +51,15 @@
         - docker_installed.rc == 0
         - docker_containers is defined
 
-    - name: "Display container links (Çalışma Şartı: Linkler başarıyla üretilebilmeli)"
+    - name: "Display container links (When: links were generated successfully)"
       debug:
-        msg: "Aşağıdaki container portlarına browser üzerinden erişebilirsiniz:\n\n{{ docker_links | default([]) | join('\n') }}"
+        msg: "You can reach the following container ports in a browser:\n\n{{ docker_links | default([]) | join('\n') }}"
       when:
         - docker_installed.rc == 0
         - docker_links is defined
         - docker_links | length > 0
 
-    - name: "Docker not found message (Çalışma Şartı: Docker yüklü OLMAMALI)"
+    - name: "Docker not found message (When: Docker is NOT installed)"
       debug:
-        msg: "Bu sunucuda Docker kurulu değil veya 'docker' komutu bulunamadı."
+        msg: "Docker is not installed on this host or the 'docker' command was not found."
       when: docker_installed.rc != 0

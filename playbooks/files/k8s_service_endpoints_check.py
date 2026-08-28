@@ -59,7 +59,7 @@ def main() -> int:
         services = kubectl_json(["get", "services", "--all-namespaces"])
         slices = kubectl_json(["get", "endpointslices", "--all-namespaces"])
     except (RuntimeError, json.JSONDecodeError) as exc:
-        print(f"[ERROR] Service/EndpointSlice kaynakları alınamadı: {exc}")
+        print(f"[ERROR] Service/EndpointSlice resources could not be retrieved: {exc}")
         return 2
 
     service_items = as_list(as_dict(services).get("items"))
@@ -92,7 +92,7 @@ def main() -> int:
         namespace = metadata.get("namespace", "default")
         if namespace in excluded:
             continue
-        name = metadata.get("name", "bilinmiyor")
+        name = metadata.get("name", "unknown")
         spec = as_dict(service.get("spec"))
         service_type = spec.get("type", "ClusterIP")
         prefix = f"{namespace}/{name}"
@@ -116,11 +116,11 @@ def main() -> int:
 
         if not related:
             level = "CRITICAL" if spec.get("selector") else "WARN"
-            add(level, f"{prefix}: EndpointSlice yok")
+            add(level, f"{prefix}: EndpointSlice missing")
         elif not ready_endpoints:
             add(
                 "CRITICAL",
-                f"{prefix}: {len(endpoints)} endpoint var fakat hazır backend yok",
+                f"{prefix}: {len(endpoints)} endpoints but no ready backend",
             )
         else:
             healthy += 1
@@ -130,41 +130,41 @@ def main() -> int:
                 "ingress"
             )
         ):
-            add("WARN", f"{prefix}: LoadBalancer external adresi Pending")
+            add("WARN", f"{prefix}: LoadBalancer external address is Pending")
 
         ports = as_list(spec.get("ports"))
         if len(ports) > 1:
             unnamed = [port for port in ports if not as_dict(port).get("name")]
             if unnamed:
-                add("WARN", f"{prefix}: çoklu port içinde isimsiz port var")
+                add("WARN", f"{prefix}: unnamed port among multiple ports")
 
         not_ready = len(endpoints) - len(ready_endpoints)
         if not_ready and ready_endpoints:
             add(
                 "WARN",
-                f"{prefix}: {len(ready_endpoints)} hazır, {not_ready} hazır olmayan endpoint",
+                f"{prefix}: {len(ready_endpoints)} ready, {not_ready} not-ready endpoint(s)",
             )
 
-    print("KUBERNETES SERVICE / ENDPOINTSLICE SAĞLIK RAPORU")
+    print("KUBERNETES SERVICE / ENDPOINTSLICE HEALTH REPORT")
     print("=" * 88)
-    print(f"İncelenen Service : {checked}")
-    print(f"Sağlıklı Service  : {healthy}")
+    print(f"Checked Service   : {checked}")
+    print(f"Healthy Service   : {healthy}")
     print(f"EndpointSlice     : {len(slice_items)}")
     print("-" * 88)
     for level, message in findings:
         print(f"[{level}] {message}")
     if not findings:
-        print("[OK] Tüm Service'lerin hazır backend'i var")
+        print("[OK] All Services have a ready backend")
     if len(findings) >= args.max_findings:
-        print(f"[WARN] Çıktı {args.max_findings} bulgu ile sınırlandı")
+        print(f"[WARN] Output limited to {args.max_findings} findings")
     counts = {
         level: sum(1 for finding_level, _ in findings if finding_level == level)
         for level in ("CRITICAL", "WARN", "INFO")
     }
     print("-" * 88)
     print(
-        f"Özet: {counts['CRITICAL']} kritik, {counts['WARN']} uyarı, "
-        f"{counts['INFO']} bilgi"
+        f"Summary: {counts['CRITICAL']} critical, {counts['WARN']} warning(s), "
+        f"{counts['INFO']} info"
     )
     return 0
 

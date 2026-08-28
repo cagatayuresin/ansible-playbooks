@@ -48,7 +48,7 @@ def main() -> int:
             ["get", "serviceaccounts", "--all-namespaces"]
         )
     except (RuntimeError, json.JSONDecodeError) as exc:
-        print(f"[ERROR] RBAC kaynakları alınamadı: {exc}")
+        print(f"[ERROR] RBAC resources could not be retrieved: {exc}")
         return 2
 
     findings: list[tuple[str, str]] = []
@@ -58,19 +58,19 @@ def main() -> int:
             findings.append((level, message))
 
     for binding in cluster_bindings.get("items", []):
-        name = binding.get("metadata", {}).get("name", "bilinmiyor")
+        name = binding.get("metadata", {}).get("name", "unknown")
         role_name = binding.get("roleRef", {}).get("name", "")
         subjects = binding.get("subjects", []) or []
         subject_text = ", ".join(subject_name(subject) for subject in subjects)
         if role_name == "cluster-admin":
             add(
                 "CRITICAL",
-                f"ClusterRoleBinding {name}: cluster-admin -> {subject_text or 'subjects yok'}",
+                f"ClusterRoleBinding {name}: cluster-admin -> {subject_text or 'no subjects'}",
             )
         for subject in subjects:
             subject_value = subject.get("name", "")
             if subject_value == "system:masters":
-                add("CRITICAL", f"ClusterRoleBinding {name}: system:masters bağlı")
+                add("CRITICAL", f"ClusterRoleBinding {name}: system:masters is bound")
             elif subject_value == "system:unauthenticated":
                 add(
                     "CRITICAL",
@@ -79,7 +79,7 @@ def main() -> int:
             elif subject_value == "system:authenticated":
                 add(
                     "WARN",
-                    f"ClusterRoleBinding {name}: tüm authenticated kullanıcılar -> {role_name}",
+                    f"ClusterRoleBinding {name}: all authenticated users -> {role_name}",
                 )
 
     for binding in role_bindings.get("items", []):
@@ -87,13 +87,13 @@ def main() -> int:
         namespace = metadata.get("namespace", "default")
         if namespace in excluded:
             continue
-        name = metadata.get("name", "bilinmiyor")
+        name = metadata.get("name", "unknown")
         role_name = binding.get("roleRef", {}).get("name", "")
         subjects = binding.get("subjects", []) or []
         if role_name == "cluster-admin":
             add(
                 "CRITICAL",
-                f"RoleBinding {namespace}/{name}: cluster-admin namespace'e bağlanmış",
+                f"RoleBinding {namespace}/{name}: cluster-admin bound to namespace",
             )
         for subject in subjects:
             if subject.get("name") == "system:unauthenticated":
@@ -115,7 +115,7 @@ def main() -> int:
         namespace = metadata.get("namespace")
         if namespace in excluded:
             return
-        name = metadata.get("name", "bilinmiyor")
+        name = metadata.get("name", "unknown")
         prefix = (
             f"ClusterRole {name}"
             if cluster_scoped
@@ -130,14 +130,14 @@ def main() -> int:
             if "*" in verbs and ("*" in resources or "*" in api_groups):
                 add(
                     "CRITICAL" if cluster_scoped else "WARN",
-                    f"{prefix} kural {index}: wildcard verb/resource yetkisi",
+                    f"{prefix} rule {index}: wildcard verb/resource permission",
                 )
             elif "*" in verbs:
-                add("WARN", f"{prefix} kural {index}: wildcard verb")
+                add("WARN", f"{prefix} rule {index}: wildcard verb")
             if verbs & dangerous_verbs:
                 add(
                     "CRITICAL",
-                    f"{prefix} kural {index}: tehlikeli verb "
+                    f"{prefix} rule {index}: dangerous verb "
                     f"{','.join(sorted(verbs & dangerous_verbs))}",
                 )
             if resources & sensitive_resources and verbs & {
@@ -150,7 +150,7 @@ def main() -> int:
             }:
                 add(
                     "WARN",
-                    f"{prefix} kural {index}: hassas kaynak yetkisi "
+                    f"{prefix} rule {index}: sensitive resource permission "
                     f"{','.join(sorted(resources & sensitive_resources))}",
                 )
 
@@ -167,13 +167,13 @@ def main() -> int:
         if account.get("automountServiceAccountToken") is not False:
             add(
                 "INFO",
-                f"ServiceAccount {namespace}/default: automountServiceAccountToken=false değil",
+                f"ServiceAccount {namespace}/default: automountServiceAccountToken is not false",
             )
 
-    print("KUBERNETES RBAC RİSK RAPORU")
+    print("KUBERNETES RBAC RISK REPORT")
     print("=" * 92)
     print(
-        "İncelenen: "
+        "Checked: "
         f"{len(cluster_roles.get('items', []))} ClusterRole, "
         f"{len(roles.get('items', []))} Role, "
         f"{len(cluster_bindings.get('items', []))} ClusterRoleBinding, "
@@ -183,17 +183,17 @@ def main() -> int:
     for level, message in findings:
         print(f"[{level}] {message}")
     if not findings:
-        print("[OK] Tanımlı politika kapsamında RBAC riski yok")
+        print("[OK] No RBAC risks under the configured policy")
     if len(findings) >= args.max_findings:
-        print(f"[WARN] Çıktı {args.max_findings} bulgu ile sınırlandı")
+        print(f"[WARN] Output limited to {args.max_findings} findings")
     counts = {
         level: sum(1 for finding_level, _ in findings if finding_level == level)
         for level in ("CRITICAL", "WARN", "INFO")
     }
     print("-" * 92)
     print(
-        f"Özet: {counts['CRITICAL']} kritik, {counts['WARN']} uyarı, "
-        f"{counts['INFO']} bilgi"
+        f"Summary: {counts['CRITICAL']} critical, {counts['WARN']} warning(s), "
+        f"{counts['INFO']} info"
     )
     return 0
 

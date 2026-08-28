@@ -1,38 +1,39 @@
 ---
+lang: en
 title: "42 · generate_support_bundle"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 42
 ---
 
-# 42_generate_support_bundle.yml - Kullanım Kılavuzu
+# 42_generate_support_bundle.yml - Usage Guide
 
 ![Modifies State](https://img.shields.io/badge/State-Writes_Archive-F59E0B?style=flat) ![Support](https://img.shields.io/badge/Support-Redacted_Bundle-6366F1?style=flat)
 
-## Amaç
+## Purpose
 
-İlk control-plane host'undan Kubernetes ve işletim sistemi tanı verilerini toplayıp `.tar.gz` arşivini controller üzerindeki `support-bundles/` dizinine getirir.
+Collects Kubernetes and operating-system diagnostics from the first control-plane host and fetches a `.tar.gz` archive into `support-bundles/` on the controller.
 
-Toplanan başlıca veriler:
+Main data collected:
 
-- Cluster/version/node/pod/workload listeleri
-- Service ve EndpointSlice
-- Event, storage, PDB, NetworkPolicy, APIService ve CSR
-- Disk, RAM, uptime, başarısız servisler ve son journal uyarıları
+- Cluster/version/node/pod/workload lists
+- Service and EndpointSlice
+- Events, storage, PDB, NetworkPolicy, APIService, and CSR
+- Disk, RAM, uptime, failed services, and recent journal warnings
 
-Kubernetes Secret ve ConfigMap içerikleri hiçbir zaman istenmez. Varsayılan redaksiyon IP, e-posta ve bilinen token/password kalıplarını maskeler.
+Kubernetes Secret and ConfigMap contents are never requested. Default redaction masks IPs, email addresses, and known token/password patterns.
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `support_bundle_redact` | `true` | Sezgisel hassas veri maskelemesi |
-| `support_bundle_keep_remote` | `false` | `/tmp` altındaki hedef arşivi tutar |
-| `support_bundle_local_dir` | `support-bundles/` | Controller çıktı dizini |
+| `support_bundle_redact` | `true` | Heuristic masking of sensitive data |
+| `support_bundle_keep_remote` | `false` | Keeps the target archive under `/tmp` |
+| `support_bundle_local_dir` | `support-bundles/` | Controller output directory |
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/42_generate_support_bundle.yml
 ```
 
-Redaksiyon sezgiseldir. Arşivi üçüncü tarafla paylaşmadan önce içeriği manuel olarak inceleyin. `support-bundles/` Git tarafından yok sayılır ve dizin `0700`, arşiv `0600` izinleriyle oluşturulur.
+Redaction is heuristic. Review the archive contents manually before sharing it with a third party. `support-bundles/` is gitignored; the directory is created with `0700` and archives with `0600`.

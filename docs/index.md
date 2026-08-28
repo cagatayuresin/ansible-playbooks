@@ -1,20 +1,23 @@
 ---
+lang: en
 layout: home
-title: Ana Sayfa
+title: Home
 nav_order: 1
 ---
 
-# Ansible Playbooks Dokümantasyonu
+# Ansible Playbooks Documentation
 
-Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonuna hoş geldiniz.
+Welcome to this collection of Ansible playbooks for health checks, reporting, and maintenance of Kubernetes clusters and servers.
 
-## Başlangıç
+Use **English** / **Türkçe** in the header to switch language. Turkish pages live under `/tr/`.
 
-- [Kurulum Talimatları](00_installation.md)
+## Getting started
 
-## Playbook Kılavuzları
+- [Installation instructions](00_installation.md)
 
-| # | Kılavuz |
+## Playbook Guides
+
+| # | Guide |
 |---|---|
 | 01 | [check_pod_health](01_check_pod_health.md) |
 | 02 | [check_open_nodeports](02_check_open_nodeports.md) |
@@ -58,5 +61,16 @@ Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bak
 | 40 | [check_node_baseline_drift](40_check_node_baseline_drift.md) |
 | 41 | [patch_and_reboot_nodes](41_patch_and_reboot_nodes.md) |
 | 42 | [generate_support_bundle](42_generate_support_bundle.md) |
+| 43 | [install_kubectl_aliases](43_install_kubectl_aliases.md) |
+| 44 | [install_helm_aliases](44_install_helm_aliases.md) |
+| 45 | [install_docker_aliases](45_install_docker_aliases.md) |
+| 46 | [install_git_aliases](46_install_git_aliases.md) |
+| 47 | [install_system_aliases](47_install_system_aliases.md) |
+| 48 | [install_python_aliases](48_install_python_aliases.md) |
+| 49 | [install_virt_aliases](49_install_virt_aliases.md) |
+| 50 | [install_helper_functions](50_install_helper_functions.md) |
+| 51 | [install_sysupdate_function](51_install_sysupdate_function.md) |
+| 52 | [run_sysupdate](52_run_sysupdate.md) |
+| 53 | [remove_shell_aliases](53_remove_shell_aliases.md) |
 
-*(Ana repoya dönmek için [GitHub Deposuna Gidin](https://github.com/cagatayuresin/ansible-playbooks))*
+*(To return to the main repository, [go to the GitHub repository](https://github.com/cagatayuresin/ansible-playbooks))*

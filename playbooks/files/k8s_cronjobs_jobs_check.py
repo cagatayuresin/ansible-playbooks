@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Salt-okunur: CronJob / Job failure report."""
+"""Read-only: CronJob / Job failure report."""
 from __future__ import annotations
 
 import json
@@ -42,25 +42,25 @@ def main() -> None:
 
     lines: list[str] = []
     scope = f"namespace={ns}" if ns else "namespace=ALL"
-    lines.append(f"CronJob / Job raporu ({scope}, salt-okunur)")
+    lines.append(f"CronJob / Job report ({scope}, read-only)")
 
     rc, _, err = run("kubectl cluster-info")
     if rc != 0:
-        lines.append(f"kubectl erişimi yok: {err}")
+        lines.append(f"kubectl access missing: {err}")
         print("\n".join(lines))
         return
 
     ns_flag = f"-n {ns}" if ns else "-A"
 
     # CronJobs
-    lines.extend(section("CronJob'lar"))
+    lines.extend(section("CronJobs"))
     rc, out, err = run(f"kubectl get cronjobs {ns_flag} -o json")
     if rc != 0 or not out:
-        lines.append(f"cronjobs alınamadı: {err}")
+        lines.append(f"cronjobs could not be retrieved: {err}")
     else:
         items = json.loads(out).get("items") or []
         if not items:
-            lines.append("(CronJob yok)")
+            lines.append("(no CronJob)")
         else:
             lines.append(
                 f"{'NS/NAME':<45} {'SCH':<20} {'SUSPEND':<8} {'LAST_SCHEDULE':<22} {'ACTIVE':>6}"
@@ -79,13 +79,13 @@ def main() -> None:
                 lines.append(
                     f"{cns + '/' + name:<45} {sched:<20} {susp:<8} {str(last)[:22]:<22} {active:>6}"
                 )
-            lines.append(f"Toplam CronJob: {len(items)}")
+            lines.append(f"Total CronJob: {len(items)}")
 
     # Jobs — especially Failed
-    lines.extend(section("Job'lar (Failed / aktif sorunlular önce)"))
+    lines.extend(section("Jobs (Failed / active problems first)"))
     rc, out, err = run(f"kubectl get jobs {ns_flag} -o json")
     if rc != 0 or not out:
-        lines.append(f"jobs alınamadı: {err}")
+        lines.append(f"jobs could not be retrieved: {err}")
         print("\n".join(lines))
         return
 
@@ -129,7 +129,7 @@ def main() -> None:
     parsed.sort(key=lambda x: (order.get(x["state"], 9), x["ref"]))
 
     failed_jobs = [p for p in parsed if p["state"] == "Failed"]
-    lines.append(f"Toplam Job: {len(parsed)} | Failed: {len(failed_jobs)}")
+    lines.append(f"Total Job: {len(parsed)} | Failed: {len(failed_jobs)}")
     lines.append(
         f"{'STATE':<10} {'S/F/A':>8}  {'NS/NAME':<45}  START / REASON"
     )
@@ -145,20 +145,20 @@ def main() -> None:
         )
         shown += 1
         if shown >= 60:
-            lines.append(f"... kısaltıldı (toplam {len(parsed)} job)")
+            lines.append(f"... truncated (total {len(parsed)} jobs)")
             break
 
     if failed_jobs:
         lines.append("")
-        lines.append("Failed job referansları:")
+        lines.append("Failed job references:")
         for p in failed_jobs[:30]:
             lines.append(f"  - {p['ref']}")
 
     lines.append("")
     lines.append(
-        "Yorum: Failed CronJob türevleri genelde ImagePull/OOM/backoff — 01, 17, 22 ile birleştir."
+        "Note: Failed CronJob children are usually ImagePull/OOM/backoff — combine with 01, 17, 22."
     )
-    lines.append("Detay: docs/26_check_cronjobs_jobs.md")
+    lines.append("Details: docs/26_check_cronjobs_jobs.md")
     print("\n".join(lines))
 
 

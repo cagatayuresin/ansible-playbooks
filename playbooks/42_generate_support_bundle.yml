@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes ve Sistem Support Bundle Oluşturma
+- name: Generate Kubernetes and System Support Bundle
   hosts: master:singlenode
   gather_facts: true
   environment:
@@ -16,11 +16,11 @@
       }}-{{ ansible_date_time.iso8601_basic_short }}.tar.gz
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Controller üzerinde support bundle dizinini oluştur
+    - name: Create support bundle directory on the controller
       file:
         path: "{{ support_bundle_local_dir }}"
         state: directory
@@ -29,7 +29,7 @@
       become: false
       when: inventory_hostname == first_control_plane
 
-    - name: Hedef host üzerinde support bundle oluştur
+    - name: Create support bundle on the target host
       become: true
       script: >-
         files/support_bundle_collect.py
@@ -39,7 +39,7 @@
       changed_when: true
       when: inventory_hostname == first_control_plane
 
-    - name: Support bundle arşivini controller'a getir
+    - name: Fetch support bundle archive to the controller
       become: true
       fetch:
         src: "{{ support_bundle_remote_path }}"
@@ -48,7 +48,7 @@
       register: support_bundle_fetch
       when: inventory_hostname == first_control_plane
 
-    - name: Hedef host üzerindeki geçici support bundle'ı temizle
+    - name: Remove temporary support bundle on the target host
       become: true
       file:
         path: "{{ support_bundle_remote_path }}"
@@ -57,9 +57,9 @@
         - inventory_hostname == first_control_plane
         - not (support_bundle_keep_remote | bool)
 
-    - name: Support bundle sonucu
+    - name: Support bundle result
       debug:
         msg:
           - "{{ support_bundle_result.stdout_lines | default([]) }}"
-          - "Controller arşivi: {{ support_bundle_fetch.dest | default(support_bundle_local_dir) }}"
+          - "Controller archive: {{ support_bundle_fetch.dest | default(support_bundle_local_dir) }}"
       when: inventory_hostname == first_control_plane

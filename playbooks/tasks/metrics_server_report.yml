@@ -1,8 +1,8 @@
 ---
-# Ortak: metrics-server'dan okunaklı CPU/bellek özeti.
-# Beklenen: metrics_server_ready == true, kubectl erişimi var.
+# Shared: readable CPU/memory summary from metrics-server.
+# Expected: metrics_server_ready == true, kubectl access is available.
 
-- name: "kubectl top nodes (Çalışma Şartı: metrics-server hazır olmalı)"
+- name: "kubectl top nodes (When: metrics-server must be ready)"
   command: kubectl top nodes
   register: metrics_top_nodes
   ignore_errors: true
@@ -10,7 +10,7 @@
   check_mode: false
   when: metrics_server_ready | default(false) | bool
 
-- name: "kubectl top pods -A (CPU'ya göre, Çalışma Şartı: metrics-server hazır olmalı)"
+- name: "kubectl top pods -A (by CPU, When: metrics-server must be ready)"
   command: kubectl top pods -A --sort-by=cpu
   register: metrics_top_pods_cpu
   ignore_errors: true
@@ -18,7 +18,7 @@
   check_mode: false
   when: metrics_server_ready | default(false) | bool
 
-- name: "kubectl top pods -A (belleğe göre, Çalışma Şartı: metrics-server hazır olmalı)"
+- name: "kubectl top pods -A (by memory, When: metrics-server must be ready)"
   command: kubectl top pods -A --sort-by=memory
   register: metrics_top_pods_mem
   ignore_errors: true
@@ -26,12 +26,12 @@
   check_mode: false
   when: metrics_server_ready | default(false) | bool
 
-- name: Metrics-server kaynak kullanımı raporu
+- name: Metrics-server resource usage report
   vars:
     _nodes: "{{ metrics_top_nodes.stdout | default(metrics_top_nodes.stderr | default('')) | trim if metrics_top_nodes is defined else '' }}"
     _pods_cpu: "{{ metrics_top_pods_cpu.stdout | default(metrics_top_pods_cpu.stderr | default('')) | trim if metrics_top_pods_cpu is defined else '' }}"
     _pods_mem: "{{ metrics_top_pods_mem.stdout | default(metrics_top_pods_mem.stderr | default('')) | trim if metrics_top_pods_mem is defined else '' }}"
-    _empty: "-- Veri alınamadı (metrics henüz dolmamış olabilir; ~1 dk sonra tekrar deneyin) --"
+    _empty: "-- No data (metrics may not have populated yet; retry in ~1 min) --"
   debug:
     msg:
       - |
@@ -40,28 +40,28 @@
         # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
         ################################################################################
       - |
-        === Node CPU / bellek (kubectl top nodes) ===
-        Yorum: CPU(cores) ve MEMORY(bytes) anlık kullanım. Yüksek node = kapasite baskısı.
+        === Node CPU / memory (kubectl top nodes) ===
+        Note: CPU(cores) and MEMORY(bytes) are current usage. High node = capacity pressure.
         {{ _nodes if _nodes | length > 0 else _empty }}
       - |
-        === Pod'lar CPU'ya göre (kubectl top pods -A --sort-by=cpu) ===
-        Yorum: En çok CPU yiyen pod'lar üstte. Namespace ile hangi iş yükü olduğu görülür.
+        === Pods by CPU (kubectl top pods -A --sort-by=cpu) ===
+        Note: Pods using the most CPU are at the top. Namespace shows which workload it is.
         {{ _pods_cpu if _pods_cpu | length > 0 else _empty }}
       - |
-        === Pod'lar belleğe göre (kubectl top pods -A --sort-by=memory) ===
-        Yorum: En çok RAM yiyen pod'lar üstte. OOM / bellek sızıntısı şüphesinde buraya bak.
+        === Pods by memory (kubectl top pods -A --sort-by=memory) ===
+        Note: Pods using the most RAM are at the top. Check here if you suspect OOM / a memory leak.
         {{ _pods_mem if _pods_mem | length > 0 else _empty }}
       - |
-        Detay: docs/15_get_metrics_server_stats.md
+        Details: docs/15_get_metrics_server_stats.md
   when: metrics_server_ready | default(false) | bool
 
-- name: "metrics-server hazır değil, istatistik atlandı"
+- name: "metrics-server is not ready, stats skipped"
   debug:
     msg: |
       ################################################################################
       # HOST: {{ inventory_hostname }}
       # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
       ################################################################################
-      metrics-server hazır değil; kubectl top atlandı.
-      Kurulum için: playbooks/16_ensure_metrics_server.yml
+      metrics-server is not ready; kubectl top was skipped.
+      To install: playbooks/16_ensure_metrics_server.yml
   when: not (metrics_server_ready | default(false) | bool)

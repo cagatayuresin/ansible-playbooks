@@ -1,5 +1,5 @@
 ---
-- name: Sunucu Zamanı ve Saat Dilimi Raporu
+- name: Server time and timezone report
   hosts: all
   gather_facts: true
 
@@ -11,36 +11,36 @@
       - ^ntp
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Sistemdeki servisleri keşfet
+    - name: Discover services on the host
       service_facts:
 
-    - name: Zaman senkronizasyon servislerini filtrele
+    - name: Filter time sync services
       set_fact:
         time_services: "{{ ansible_facts.services.keys() | select('search', time_service_patterns | join('|')) | list }}"
 
-    - name: "Zaman senkronizasyon servis durumu (Çalışma Şartı: ilgili servis bulunmalı)"
+    - name: "Time sync service status (When: matching service exists)"
       debug:
-        msg: "{{ item }} -> durum: {{ ansible_facts.services[item].get('state', 'bilinmiyor') }}, açılışta aktif: {{ ansible_facts.services[item].get('status', 'bilinmiyor') }}"
+        msg: "{{ item }} -> state: {{ ansible_facts.services[item].get('state', 'unknown') }}, enabled at boot: {{ ansible_facts.services[item].get('status', 'unknown') }}"
       loop: "{{ time_services }}"
       loop_control:
         label: "{{ item }}"
       when: time_services | length > 0
 
-    - name: "Zaman senkronizasyon servisi bulunamadı uyarısı (Çalışma Şartı: Hiç servis bulunmamalı)"
+    - name: "No time sync service warning (When: no matching service exists)"
       debug:
-        msg: "Sistemde bilinen bir zaman senkronizasyon servisi (chrony/systemd-timesyncd/ntpd) bulunamadı."
+        msg: "No known time sync service (chrony/systemd-timesyncd/ntpd) found on this host."
       when: time_services | length == 0
 
-    - name: Sunucu zamanı ve saat dilimi bilgisi
+    - name: Collect server time and timezone
       command: timedatectl
       register: server_time
       changed_when: false
 
-    - name: Zaman ve saat dilimi raporu
+    - name: Time and timezone report
       debug:
         msg:
           - |

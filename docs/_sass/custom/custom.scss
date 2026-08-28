@@ -1,0 +1,12 @@
+.site-language {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 1rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.site-language a[aria-current="page"] {
+  font-weight: 700;
+  text-decoration: none;
+}

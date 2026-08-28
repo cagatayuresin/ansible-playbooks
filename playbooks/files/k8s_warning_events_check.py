@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Salt-okunur: Kubernetes Warning events report."""
+"""Read-only: Kubernetes Warning events report."""
 from __future__ import annotations
 
 import json
@@ -44,7 +44,7 @@ def main() -> None:
     parser.add_argument(
         "--namespace",
         default="",
-        help="Belirli namespace; boşsa tüm namespace'ler (-A)",
+        help="Specific namespace; empty means all namespaces (-A)",
     )
     args = parser.parse_args()
     ns_filter = (args.namespace or "").strip()
@@ -52,12 +52,12 @@ def main() -> None:
     scope = f"namespace={ns_filter}" if ns_filter else "namespace=ALL"
     lines: list[str] = []
     lines.append(
-        f"Kubernetes Warning event raporu (son ~{args.since_hours}s, {scope}, salt-okunur)"
+        f"Kubernetes Warning event report (last ~{args.since_hours}h, {scope}, read-only)"
     )
 
     rc, _, err = run("kubectl cluster-info")
     if rc != 0:
-        lines.append(f"kubectl erişimi yok: {err}")
+        lines.append(f"kubectl access missing: {err}")
         print("\n".join(lines))
         return
 
@@ -66,7 +66,7 @@ def main() -> None:
     else:
         rc, out, err = run("kubectl get events -A -o json")
     if rc != 0 or not out:
-        lines.append(f"events alınamadı: {err}")
+        lines.append(f"events could not be retrieved: {err}")
         print("\n".join(lines))
         return
 
@@ -113,22 +113,22 @@ def main() -> None:
         reverse=True,
     )
 
-    lines.extend(section("Özet"))
-    lines.append(f"Kapsam: {scope}")
-    lines.append(f"Warning event (filtre sonrası): {len(warnings)}")
+    lines.extend(section("Summary"))
+    lines.append(f"Scope: {scope}")
+    lines.append(f"Warning events (after filter): {len(warnings)}")
     by_reason = Counter(w["reason"] for w in warnings)
     by_ns = Counter(w["ns"] for w in warnings)
-    lines.append("En sık reason:")
+    lines.append("Most frequent reason:")
     for reason, cnt in by_reason.most_common(15):
         lines.append(f"  {cnt:>4}  {reason}")
     if not ns_filter:
-        lines.append("Namespace dağılımı (top):")
+        lines.append("Namespace distribution (top):")
         for ns, cnt in by_ns.most_common(15):
             lines.append(f"  {cnt:>4}  {ns}")
 
-    lines.extend(section(f"Son Warning event'ler (max {args.limit})"))
+    lines.extend(section(f"Latest Warning events (max {args.limit})"))
     lines.append(
-        f"{'ZAMAN':<22} {'CNT':>4}  {'NS':<20} {'KIND/NAME':<40}  REASON / MESSAGE"
+        f"{'TIME':<22} {'CNT':>4}  {'NS':<20} {'KIND/NAME':<40}  REASON / MESSAGE"
     )
     lines.append("-" * 120)
     for w in warnings[: args.limit]:
@@ -141,14 +141,14 @@ def main() -> None:
         lines.append(f"{'':22} {'':4}  {'':20} {'':40}  {msg}")
 
     if len(warnings) > args.limit:
-        lines.append(f"... +{len(warnings) - args.limit} event daha")
+        lines.append(f"... +{len(warnings) - args.limit} more events")
 
     lines.append("")
     lines.append(
-        "Yorum: FailedScheduling / FailedMount / ImagePullBackOff / OOMKilled / "
-        "Unhealthy sık görülürse 01, 10, 17 playbook'ları ile birleştir."
+        "Note: If FailedScheduling / FailedMount / ImagePullBackOff / OOMKilled / "
+        "Unhealthy are frequent, combine with playbooks 01, 10, 17."
     )
-    lines.append("Detay: docs/22_check_k8s_warning_events.md")
+    lines.append("Details: docs/22_check_k8s_warning_events.md")
     print("\n".join(lines))
 
 

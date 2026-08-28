@@ -1,15 +1,15 @@
 ---
-# Ortak: metrics-server yoksa resmi manifest ile kurar, gerekirse insecure-tls ekler.
-# Beklenen play vars: first_control_plane, metrics_server_manifest_url,
+# Shared: if metrics-server is missing, install it from the official manifest, adding insecure-tls if needed.
+# Expected play vars: first_control_plane, metrics_server_manifest_url,
 #                      metrics_server_kubelet_insecure_tls
-# Önce metrics_server_check çalışmış olmalı (metrics_server_ready fact).
+# metrics_server_check must have run first (metrics_server_ready fact).
 
-- name: "metrics-server zaten hazır, kurulum atlanıyor"
+- name: "metrics-server already ready, skipping install"
   debug:
-    msg: "metrics-server zaten kurulu ve API Available — kurulum yapılmadı."
+    msg: "metrics-server is already installed and the API is Available — no install was performed."
   when: metrics_server_ready | default(false) | bool
 
-- name: "metrics-server manifestini uygula (Çalışma Şartı: kurulu/hazır OLMAMALI)"
+- name: "Apply metrics-server manifest (When: must NOT be installed/ready)"
   command:
     argv:
       - kubectl
@@ -20,12 +20,12 @@
   changed_when: true
   when: not (metrics_server_ready | default(false) | bool)
 
-- name: "kubelet-insecure-tls argümanını ekle (Çalışma Şartı: kurulum yapıldı ve flag açık)"
+- name: "Add kubelet-insecure-tls argument (When: install was performed and flag is enabled)"
   shell: |
     set -e
     args="$(kubectl -n kube-system get deploy metrics-server -o jsonpath='{.spec.template.spec.containers[0].args}')"
     if echo "$args" | grep -q -- '--kubelet-insecure-tls'; then
-      echo "kubelet-insecure-tls zaten var"
+      echo "kubelet-insecure-tls already present"
       exit 0
     fi
     kubectl -n kube-system patch deployment metrics-server --type='json' \
@@ -39,7 +39,7 @@
     - metrics_server_apply is not skipped
     - metrics_server_apply.rc | default(1) == 0
 
-- name: "metrics-server rollout tamamlanmasını bekle (Çalışma Şartı: kurulum yapıldı)"
+- name: "Wait for metrics-server rollout to complete (When: install was performed)"
   command: kubectl -n kube-system rollout status deployment/metrics-server --timeout=180s
   register: metrics_server_rollout
   changed_when: false
@@ -49,7 +49,7 @@
     - metrics_server_apply is not skipped
     - metrics_server_apply.rc | default(1) == 0
 
-- name: "kubectl top hazır olana kadar dene (Çalışma Şartı: kurulum yapıldı)"
+- name: "Retry until kubectl top is ready (When: install was performed)"
   command: kubectl top nodes
   register: metrics_top_wait
   retries: 12

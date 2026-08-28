@@ -1,58 +1,59 @@
 ---
+lang: en
 title: "16 · ensure_metrics_server"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 16
 ---
 
-# 16_ensure_metrics_server.yml - Kullanım Kılavuzu
+# 16_ensure_metrics_server.yml - Usage Guide
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
 
-## Amaç
+## Purpose
 
-1. metrics-server durumunu kontrol eder (14 ile aynı check task’ı)
-2. Hazır değilse resmi manifest ile **kurar**
-3. Gerekirse `--kubelet-insecure-tls` ekler (on-prem / self-signed kubelet)
-4. Rollout + `kubectl top` hazır olana kadar bekler
-5. 15 ile aynı istatistik raporunu basar
+1. Checks metrics-server status (same check task as 14)
+2. If it is not ready, **installs** it from the official manifest
+3. Adds `--kubelet-insecure-tls` if needed (on-prem / self-signed kubelet)
+4. Waits for rollout + `kubectl top` to become ready
+5. Prints the same stats report as 15
 
-⚠️ Cluster’ı değiştirir (eksikse Deployment/APIService oluşturur). Zaten hazırsa kurulum atlanır, sadece istatistik alınır.
+⚠️ Changes the cluster (creates Deployment/APIService if missing). If it is already ready, install is skipped and only stats are collected.
 
-## Ortak görevler
+## Shared tasks
 
 - [tasks/metrics_server_check.yml](../playbooks/tasks/metrics_server_check.yml)
 - [tasks/metrics_server_install.yml](../playbooks/tasks/metrics_server_install.yml)
 - [tasks/metrics_server_report.yml](../playbooks/tasks/metrics_server_report.yml)
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `metrics_server_version` | `v0.8.1` | Tekrarlanabilir kurulum için sabitlenmiş release |
-| `metrics_server_manifest_url` | GitHub `v0.8.1/components.yaml` | Uygulanacak manifest; iç mirror veya hedef host'taki yerel dosya yolu ile değiştirilebilir |
-| `metrics_server_kubelet_insecure_tls` | `true` | On-prem’de çoğu zaman şart; cloud’da `false` yapılabilir |
+| `metrics_server_version` | `v0.8.1` | Pinned release for a reproducible install |
+| `metrics_server_manifest_url` | GitHub `v0.8.1/components.yaml` | Manifest to apply; can be replaced with an internal mirror or a local path on the target host |
+| `metrics_server_kubelet_insecure_tls` | `true` | Usually required on-prem; can be set to `false` in the cloud |
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/16_ensure_metrics_server.yml \
   --extra-vars 'metrics_server_kubelet_insecure_tls=false'
 ```
 
-Tamamen kapalı bir ağda manifesti ilk control-plane host'una kopyalayıp yerel yolu verin:
+On a fully air-gapped network, copy the manifest to the first control-plane host and pass the local path:
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/16_ensure_metrics_server.yml \
   --extra-vars 'metrics_server_manifest_url=/opt/k8s-manifests/metrics-server-v0.8.1.yaml'
 ```
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/16_ensure_metrics_server.yml
 ```
 
-## Notlar
+## Notes
 
-- k3s bazen metrics-server’ı kendisi getirir; hazırsa bu playbook sadece top raporlar.
-- `--kubelet-insecure-tls` kubelet sertifika doğrulamasını gevşetir; lab/on-prem için yaygın, sıkı prod’da alternatif (doğru CA) tercih edilir.
-- Metrics Server `0.8.x`, Kubernetes `1.31+` sürümlerini destekler. Kubernetes `1.27-1.30` için `v0.7.2` manifestini açıkça belirtin.
-- Sürüm yükseltirken hem `metrics_server_version` hem de gerekirse özel `metrics_server_manifest_url` değerini birlikte güncelleyin.
+- k3s sometimes ships metrics-server itself; if it is already ready, this playbook only reports top stats.
+- `--kubelet-insecure-tls` relaxes kubelet certificate verification; common for lab/on-prem, prefer a proper CA in strict production.
+- Metrics Server `0.8.x` supports Kubernetes `1.31+`. For Kubernetes `1.27-1.30`, specify the `v0.7.2` manifest explicitly.
+- When upgrading, update both `metrics_server_version` and, if needed, a custom `metrics_server_manifest_url` together.

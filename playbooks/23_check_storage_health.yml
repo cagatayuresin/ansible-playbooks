@@ -1,16 +1,16 @@
 ---
-- name: Depolama / Inode / PV Sağlık Raporu
+- name: Storage / inode / PV health report
   hosts: all
   gather_facts: true
   environment:
     KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Depolama raporunu üret
+    - name: Generate storage report
       become: true
       script: storage_health_check.py
       args:
@@ -20,7 +20,7 @@
       ignore_errors: true
       check_mode: false
 
-    - name: Depolama / inode / PV raporu
+    - name: Storage / inode / PV report
       debug:
         msg:
           - |
@@ -28,4 +28,4 @@
             # HOST: {{ inventory_hostname }}
             # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
             ################################################################################
-          - "{{ storage_report.stdout | default(storage_report.stderr | default('Rapor üretilemedi')) }}"
+          - "{{ storage_report.stdout | default(storage_report.stderr | default('Report could not be generated')) }}"

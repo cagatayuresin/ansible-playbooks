@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Salt-okunur: etcd / control-plane health (kubeadm + k3s)."""
+"""Read-only: etcd / control-plane health (kubeadm + k3s)."""
 from __future__ import annotations
 
 import json
@@ -28,23 +28,23 @@ def section(title: str) -> list[str]:
 
 def main() -> None:
     lines: list[str] = []
-    lines.append("etcd / control-plane sağlık raporu (salt-okunur)")
+    lines.append("etcd / control-plane health report (read-only)")
 
     rc, _, err = run("kubectl cluster-info")
     if rc != 0:
-        lines.append(f"kubectl erişimi yok: {err}")
+        lines.append(f"kubectl access missing: {err}")
         print("\n".join(lines))
         return
 
     # Component statuses (deprecated but still useful on some clusters)
-    lines.extend(section("Control-plane component'ler"))
+    lines.extend(section("Control-plane components"))
     for kind in ("deploy -n kube-system", "pods -n kube-system"):
         pass
     rc, out, _ = run(
         "kubectl get pods -n kube-system --no-headers 2>/dev/null | "
         "grep -E 'etcd|kube-apiserver|kube-controller|kube-scheduler|k3s' || true"
     )
-    lines.append(out if out else "(eşleşen kube-system control-plane pod'u yok / k3s embedded)")
+    lines.append(out if out else "(no matching kube-system control-plane pod / k3s embedded)")
 
     # API healthz
     lines.extend(section("API server health"))
@@ -59,7 +59,7 @@ def main() -> None:
                 fails = [l for l in out.splitlines() if l.endswith(": error") or "failed" in l.lower()]
                 lines.append(
                     f"{path}: OK ({len(out.splitlines())} check) "
-                    f"{'— sorunlu: ' + str(len(fails)) if fails else ''}"
+                    f"{'— issues: ' + str(len(fails)) if fails else ''}"
                 )
                 for f in fails[:10]:
                     lines.append(f"  {f}")
@@ -72,7 +72,7 @@ def main() -> None:
     lines.extend(section("etcd"))
     is_k3s = Path("/var/lib/rancher/k3s").is_dir() or shutil.which("k3s")
     if is_k3s:
-        lines.append("Dağıtım ipucu: k3s (embedded etcd veya harici).")
+        lines.append("Distribution hint: k3s (embedded etcd or external).")
         rc, out, _ = run("k3s etcd-snapshot ls 2>/dev/null || true")
         if out:
             lines.append("--- k3s etcd-snapshot ls ---")
@@ -85,7 +85,7 @@ def main() -> None:
             # try parse newest age from listing if present
         else:
             lines.append(
-                "k3s etcd-snapshot ls boş/erişilemez — snapshot schedule veya yetki kontrol et."
+                "k3s etcd-snapshot ls empty/unreachable — check snapshot schedule or permissions."
             )
         # db size if possible
         for p in (
@@ -98,11 +98,11 @@ def main() -> None:
                     lines.append(f"etcd data dir: {du}")
                 break
     else:
-        lines.append("Dağıtım ipucu: kubeadm/klasik (veya k3s değil).")
+        lines.append("Distribution hint: kubeadm/classic (or not k3s).")
         rc, out, _ = run(
             "kubectl get pods -n kube-system -l component=etcd -o wide --no-headers"
         )
-        lines.append(out if out else "etcd pod label component=etcd bulunamadı")
+        lines.append(out if out else "etcd pod label component=etcd not found")
 
         # etcdctl if available with kubeadm certs
         etcdctl = shutil.which("etcdctl")
@@ -135,18 +135,18 @@ def main() -> None:
                             waste = (db - db_inuse) / db * 100
                             lines.append(
                                 f"dbSize={db/1e6:.1f}MB dbSizeInUse={db_inuse/1e6:.1f}MB "
-                                f"boşalan≈{waste:.0f}%"
+                                f"freed≈{waste:.0f}%"
                             )
                             if waste >= 40 and db >= 100_000_000:
                                 lines.append(
-                                    "UYARI: Defrag adayı olabilir (boşalan yüksek + DB büyük). "
-                                    "Salt-okunur rapor — defrag ÇALIŞTIRILMADI."
+                                    "WARNING: Possible defrag candidate (high freed space + large DB). "
+                                    "Read-only report — defrag was NOT run."
                                 )
                 except Exception:
                     pass
         else:
             lines.append(
-                "etcdctl veya /etc/kubernetes/pki/etcd cert'leri yok — endpoint health atlandı."
+                "etcdctl or /etc/kubernetes/pki/etcd certs missing — endpoint health skipped."
             )
 
         # snapshot age under /etc/kubernetes/ or /var/lib/etcd
@@ -168,13 +168,13 @@ def main() -> None:
             newest = snaps[0]
             age_h = (datetime.now().timestamp() - newest.stat().st_mtime) / 3600
             lines.append(
-                f"Son snapshot dosyası: {newest} (yaş≈{age_h:.1f} saat)"
+                f"Latest snapshot file: {newest} (age≈{age_h:.1f} hours)"
             )
             if age_h > 48:
-                lines.append("UYARI: Snapshot 48 saatten eski görünüyor.")
+                lines.append("WARNING: Snapshot appears older than 48 hours.")
         else:
             lines.append(
-                "Yerel snapshot dizini bulunamadı (backup job ayrı makinede olabilir)."
+                "Local snapshot directory not found (backup job may run on another host)."
             )
 
     # scheduler / controller pods (kubeadm); k3s embeds these in the k3s process
@@ -186,15 +186,15 @@ def main() -> None:
     if out:
         lines.append(out)
     elif is_k3s:
-        lines.append("(k3s embedded — ayrı scheduler/controller pod'u yok)")
+        lines.append("(k3s embedded — no separate scheduler/controller pod)")
     else:
-        lines.append("(listelenemedi)")
+        lines.append("(could not be listed)")
     lines.append("")
     lines.append(
-        "Yorum: ready/livez FAIL veya etcd alarm/no snapshot → öncelikli incele. "
-        "Defrag/restore bu playbook'ta YAPILMAZ."
+        "Note: ready/livez FAIL or etcd alarm/no snapshot → investigate first. "
+        "This playbook does NOT run defrag/restore."
     )
-    lines.append("Detay: docs/25_check_etcd_controlplane.md")
+    lines.append("Details: docs/25_check_etcd_controlplane.md")
     print("\n".join(lines))
 
 

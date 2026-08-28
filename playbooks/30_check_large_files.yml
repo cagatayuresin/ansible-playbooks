@@ -1,29 +1,29 @@
 ---
-- name: Sistemdeki Büyük Dosyaları Tespit Etme
+- name: Detect Large Files on the System
   hosts: all
   gather_facts: false
 
   vars:
-    min_size: "1G"       # Aranacak minimum dosya boyutu
-    max_age_days: "30"   # Son X günde değiştirilmiş dosyalar
+    min_size: "1G"       # Minimum file size to search for
+    max_age_days: "30"   # Files modified in the last X days
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Büyük dosyaları bul
+    - name: Find large files
       become: true
       shell: "find / \\( -path /proc -o -path /sys -o -path /dev -o -path /run \\) -prune -o -type f -size +{{ min_size }} -mtime -{{ max_age_days }} -exec ls -lh {} + 2>/dev/null || true"
       register: large_files
       changed_when: false
 
-    - name: Sonuçları Raporla
+    - name: Report results
       debug:
         msg:
           - |
             ################################################################################
             # HOST: {{ inventory_hostname }}
-            # Kriter: {{ min_size }}'dan büyük, son {{ max_age_days }} günde değişenler
+            # Criteria: larger than {{ min_size }}, modified in the last {{ max_age_days }} days
             ################################################################################
-          - "{{ large_files.stdout_lines | default(['Büyük dosya bulunamadı.']) }}"
+          - "{{ large_files.stdout_lines | default(['No large files found.']) }}"

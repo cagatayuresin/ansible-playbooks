@@ -1,5 +1,5 @@
 ---
-- name: Metrics-server Kurulum Kontrolü
+- name: Metrics-server install check
   hosts: master:singlenode
   gather_facts: true
   environment:
@@ -9,15 +9,15 @@
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Metrics-server durumunu kontrol et
+    - name: Check metrics-server status
       import_tasks: tasks/metrics_server_check.yml
       when: inventory_hostname == first_control_plane
 
-    - name: Metrics-server durum raporu
+    - name: Metrics-server status report
       debug:
         msg:
           - |
@@ -26,20 +26,20 @@
             # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
             ################################################################################
           - |
-            kubectl erişimi: {{ 'OK' if kubectl_check.rc == 0 else 'YOK' }}
+            kubectl access: {{ 'OK' if kubectl_check.rc == 0 else 'NONE' }}
           - |
             Deployment (kube-system/metrics-server):
-            {{ metrics_server_deploy.stdout | default(metrics_server_deploy.stderr | default('bulunamadı')) | trim
-               if (kubectl_check.rc == 0 and metrics_server_deploy is defined) else 'atlandı / bulunamadı' }}
+            {{ metrics_server_deploy.stdout | default(metrics_server_deploy.stderr | default('not found')) | trim
+               if (kubectl_check.rc == 0 and metrics_server_deploy is defined) else 'skipped / not found' }}
           - |
             APIService v1beta1.metrics.k8s.io Available: {{ metrics_server_api.stdout | default('False') | trim
-               if (kubectl_check.rc == 0 and metrics_server_api is defined) else 'bilinmiyor' }}
+               if (kubectl_check.rc == 0 and metrics_server_api is defined) else 'unknown' }}
           - |
-            Pod'lar:
-            {{ metrics_server_pods.stdout | default(metrics_server_pods.stderr | default('yok')) | trim
-               if (kubectl_check.rc == 0 and metrics_server_pods is defined) else 'atlandı' }}
+            Pods:
+            {{ metrics_server_pods.stdout | default(metrics_server_pods.stderr | default('none')) | trim
+               if (kubectl_check.rc == 0 and metrics_server_pods is defined) else 'skipped' }}
           - |
-            Sonuç: metrics-server {{ 'HAZIR' if (metrics_server_ready | default(false) | bool) else 'HAZIR DEĞİL' }}
-            İstatistik için: playbooks/15_get_metrics_server_stats.yml
-            Kurulu değilse kur+istatistik: playbooks/16_ensure_metrics_server.yml
+            Result: metrics-server {{ 'READY' if (metrics_server_ready | default(false) | bool) else 'NOT READY' }}
+            For stats: playbooks/15_get_metrics_server_stats.yml
+            If not installed, install+stats: playbooks/16_ensure_metrics_server.yml
       when: inventory_hostname == first_control_plane

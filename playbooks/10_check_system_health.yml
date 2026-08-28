@@ -1,39 +1,39 @@
 ---
-- name: Sunucu Sistem Sağlığı Raporu
+- name: Server system health report
   hosts: all
   gather_facts: true
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Uptime bilgisi
+    - name: Collect uptime
       command: uptime -p
       register: uptime_info
       changed_when: false
       check_mode: false
 
-    - name: Load average ve çalışma kuyruğu bilgisi
+    - name: Collect load average and run queue
       command: cat /proc/loadavg
       register: loadavg_info
       changed_when: false
       check_mode: false
 
-    - name: Zombie (defunct) process sayısı
+    - name: Count zombie (defunct) processes
       shell: ps -eo stat | grep -c '^Z' || true
       register: zombie_count
       changed_when: false
       check_mode: false
 
-    - name: Sanallaştırma tipini dinamik olarak tespit et
+    - name: Detect virtualization type
       command: systemd-detect-virt
       register: virt_detect
       changed_when: false
       ignore_errors: true
       check_mode: false
 
-    - name: "Hypervisor donanım bilgisi (Çalışma Şartı: dmidecode kurulu ve erişilebilir olmalı)"
+    - name: "Hypervisor hardware info (When: dmidecode is installed and reachable)"
       become: true
       shell: |
         echo "Manufacturer: $(dmidecode -s system-manufacturer 2>/dev/null)"
@@ -44,50 +44,50 @@
       ignore_errors: true
       check_mode: false
 
-    - name: Bellek kullanımı
+    - name: Memory usage
       command: free -h
       register: memory_info
       changed_when: false
       check_mode: false
 
-    - name: "Disk kullanımı (Çalışma Şartı: gerçek dosya sistemleri)"
+    - name: "Disk usage (When: real filesystems)"
       command: df -hT -x tmpfs -x devtmpfs -x squashfs -x overlay -x efivarfs
       register: disk_info
       changed_when: false
       check_mode: false
 
-    - name: En çok CPU tüketen 10 işlem
+    - name: Top 10 CPU-consuming processes
       shell: ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -n 11
       register: top_cpu
       changed_when: false
       check_mode: false
 
-    - name: En çok RAM tüketen 10 işlem
+    - name: Top 10 RAM-consuming processes
       shell: ps -eo pid,comm,%mem,%cpu --sort=-%mem | head -n 11
       register: top_mem
       changed_when: false
       check_mode: false
 
-    - name: Yeniden başlatma gerekiyor mu kontrolü
+    - name: Check whether reboot is required
       stat:
         path: /var/run/reboot-required
       register: reboot_required
 
-    - name: Başarısız systemd servisleri
+    - name: Failed systemd services
       command: systemctl --failed --no-legend
       register: failed_units
       changed_when: false
       ignore_errors: true
       check_mode: false
 
-    - name: Kurulabilir güvenlik/paket güncellemesi sayısı
+    - name: Count available package/security updates
       shell: apt list --upgradable 2>/dev/null | tail -n +2 | wc -l
       register: upgradable_count
       changed_when: false
       ignore_errors: true
       check_mode: false
 
-    - name: Sistem sağlığı raporu
+    - name: System health report
       debug:
         msg:
           - |
@@ -98,16 +98,16 @@
           - "OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }} ({{ ansible_facts['distribution_release'] }})"
           - "Kernel: {{ ansible_facts['kernel'] }}"
           - "Uptime: {{ uptime_info.stdout }}"
-          - "CPU çekirdek sayısı: {{ ansible_facts['processor_vcpus'] | default(ansible_facts['processor_count']) }}"
-          - "Load average (1/5/15 dk): {{ loadavg_info.stdout.split(' ')[0] }} / {{ loadavg_info.stdout.split(' ')[1] }} / {{ loadavg_info.stdout.split(' ')[2] }} (çekirdek başına 1dk: {{ (loadavg_info.stdout.split(' ')[0] | float / (ansible_facts['processor_vcpus'] | default(ansible_facts['processor_count']))) | round(2) }})"
-          - "Çalışma kuyruğu (çalışan/toplam process): {{ loadavg_info.stdout.split(' ')[3] }}"
-          - "Zombie (defunct) process sayısı: {{ zombie_count.stdout | trim }}"
-          - "Sanallaştırma: rol={{ ansible_facts['virtualization_role'] | default('bilinmiyor') }}, tip={{ ansible_facts['virtualization_type'] | default('bilinmiyor') }}, systemd-detect-virt={{ virt_detect.stdout | default('tespit edilemedi') }}"
-          - "Donanım/Hypervisor bilgisi:\n{{ hypervisor_info.stdout | default('dmidecode erişilemedi (sudo/kurulum gerekebilir)') }}"
-          - "Bellek:\n{{ memory_info.stdout }}"
-          - "Disk kullanımı:\n{{ disk_info.stdout }}"
-          - "En çok CPU tüketen 10 işlem:\n{{ top_cpu.stdout }}"
-          - "En çok RAM tüketen 10 işlem:\n{{ top_mem.stdout }}"
-          - "Reboot gerekiyor mu: {{ 'EVET' if reboot_required.stat.exists else 'Hayır' }}"
-          - "Başarısız systemd servisleri: {{ failed_units.stdout if (failed_units.stdout | default('')) | trim != '' else 'Yok' }}"
-          - "Kurulabilir paket güncellemesi sayısı: {{ upgradable_count.stdout | default('bilinmiyor') }}"
+          - "CPU cores: {{ ansible_facts['processor_vcpus'] | default(ansible_facts['processor_count']) }}"
+          - "Load average (1/5/15 min): {{ loadavg_info.stdout.split(' ')[0] }} / {{ loadavg_info.stdout.split(' ')[1] }} / {{ loadavg_info.stdout.split(' ')[2] }} (1min per core: {{ (loadavg_info.stdout.split(' ')[0] | float / (ansible_facts['processor_vcpus'] | default(ansible_facts['processor_count']))) | round(2) }})"
+          - "Run queue (running/total processes): {{ loadavg_info.stdout.split(' ')[3] }}"
+          - "Zombie (defunct) process count: {{ zombie_count.stdout | trim }}"
+          - "Virtualization: role={{ ansible_facts['virtualization_role'] | default('unknown') }}, type={{ ansible_facts['virtualization_type'] | default('unknown') }}, systemd-detect-virt={{ virt_detect.stdout | default('not detected') }}"
+          - "Hardware/hypervisor info:\n{{ hypervisor_info.stdout | default('dmidecode not available (sudo/install may be required)') }}"
+          - "Memory:\n{{ memory_info.stdout }}"
+          - "Disk usage:\n{{ disk_info.stdout }}"
+          - "Top 10 CPU-consuming processes:\n{{ top_cpu.stdout }}"
+          - "Top 10 RAM-consuming processes:\n{{ top_mem.stdout }}"
+          - "Reboot required: {{ 'YES' if reboot_required.stat.exists else 'No' }}"
+          - "Failed systemd services: {{ failed_units.stdout if (failed_units.stdout | default('')) | trim != '' else 'None' }}"
+          - "Available package updates: {{ upgradable_count.stdout | default('unknown') }}"

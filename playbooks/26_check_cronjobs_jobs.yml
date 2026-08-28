@@ -1,5 +1,5 @@
 ---
-- name: CronJob / Job Raporu
+- name: CronJob / Job report
   hosts: master:singlenode
   gather_facts: true
   environment:
@@ -7,15 +7,15 @@
 
   vars:
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
-    # Boş = tüm namespace; dolu = sadece o namespace
+    # Empty = all namespaces; set = that namespace only
     jobs_namespace: ""
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: CronJob / Job raporunu üret
+    - name: Generate CronJob / Job report
       script: >-
         k8s_cronjobs_jobs_check.py
         --namespace {{ jobs_namespace | default('') | quote }}
@@ -27,7 +27,7 @@
       check_mode: false
       when: inventory_hostname == first_control_plane
 
-    - name: CronJob / Job raporu
+    - name: CronJob / Job report
       debug:
         msg:
           - |
@@ -36,5 +36,5 @@
             # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
             # namespace: {{ jobs_namespace if (jobs_namespace | default('') | length) > 0 else 'ALL' }}
             ################################################################################
-          - "{{ jobs_report.stdout | default(jobs_report.stderr | default('Rapor üretilemedi')) }}"
+          - "{{ jobs_report.stdout | default(jobs_report.stderr | default('Report could not be generated')) }}"
       when: inventory_hostname == first_control_plane

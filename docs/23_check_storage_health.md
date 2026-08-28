@@ -1,27 +1,28 @@
 ---
+lang: en
 title: "23 · check_storage_health"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 23
 ---
 
-# 23_check_storage_health.yml - Kullanım Kılavuzu
+# 23_check_storage_health.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
 
-## Amaç
+## Purpose
 
-Her host’ta salt-okunur depolama raporu:
+Read-only storage report on each host:
 
-1. **df -hT** — gerçek dosya sistemleri
-2. **df -i** — inode kullanımı
-3. **containerd/crictl / docker** disk kullanımı + imaj toplam boyutu
-4. **kubectl** varsa: PVC / PV / StorageClass + Bound olmayan PVC’ler
+1. **df -hT** — real filesystems
+2. **df -i** — inode usage
+3. **containerd/crictl / docker** disk usage + total image size
+4. **kubectl** if present: PVC / PV / StorageClass + unbound PVCs
 
-## Host kapsamı
+## Host scope
 
-`hosts: all` — disk/inode her node’da localdir. PV/PVC bilgisi kubectl erişimi olan node’da dolar (genelde control-plane); worker’da kubectl yoksa o bölüm atlanır.
+`hosts: all` — disk/inode is local to each node. PV/PVC data is filled on the node with kubectl access (usually the control-plane); if kubectl is missing on a worker, that section is skipped.
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/23_check_storage_health.yml
@@ -29,17 +30,17 @@ ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/23_check_st
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/23_check_storage_health.yml --limit workers
 ```
 
-## Yorumlama
+## Interpretation
 
-| Bulgu | Aksiyon |
+| Finding | Action |
 |---|---|
-| Disk Use% yüksek | Log / image birikimi; 17–18 |
-| IUse% yüksek | Çok sayıda küçük dosya / layer |
+| High disk Use% | Log / image accumulation; 17–18 |
+| High IUse% | Many small files / layers |
 | PVC Pending | StorageClass / provisioner / quota |
-| PV Released/Failed | Manuel temizlik / reclaim policy |
+| PV Released/Failed | Manual cleanup / reclaim policy |
 
-## Notlar
+## Notes
 
 - Script: `playbooks/files/storage_health_check.py`
-- `become: true` (du / runtime dizinleri)
-- Cluster’ı değiştirmez.
+- `become: true` (du / runtime directories)
+- Does not change the cluster.

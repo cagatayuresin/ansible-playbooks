@@ -1,0 +1,215 @@
+---
+- name: Workstation System Maintenance (sysupdate)
+  hosts: all
+  gather_facts: true
+
+  vars:
+    sysupdate_confirm: false
+    sysupdate_clean_thumbnails: true
+    sysupdate_target_user: "{{ ansible_user }}"
+
+  pre_tasks:
+    - name: Ping connectivity test
+      import_tasks: tasks/ping_pong.yml
+
+    - name: sysupdate confirmation warning
+      debug:
+        msg: >-
+          sysupdate_confirm=false → report only (apt simulation, snap/flatpak inventory, reboot flag).
+          To apply: --extra-vars 'sysupdate_confirm=true'
+      when: not (sysupdate_confirm | bool)
+      run_once: true
+
+  tasks:
+    - name: Read target user passwd entry
+      getent:
+        database: passwd
+        key: "{{ sysupdate_target_user }}"
+      check_mode: false
+
+    - name: Compute sysupdate paths
+      set_fact:
+        sysupdate_home: "{{ getent_passwd[sysupdate_target_user][4] }}"
+        sysupdate_is_debian: "{{ ansible_facts['os_family'] == 'Debian' }}"
+
+    - name: Read disk usage (before)
+      command: df -h /
+      register: sysupdate_df_before
+      changed_when: false
+      check_mode: false
+
+    - name: Check reboot requirement
+      stat:
+        path: /var/run/reboot-required
+      register: sysupdate_reboot_before
+
+    - name: Non-Debian host warning
+      debug:
+        msg: "os_family={{ ansible_facts['os_family'] }} — apt steps skipped. Use 41_patch_and_reboot_nodes.yml for Kubernetes node packages."
+      when: not (sysupdate_is_debian | bool)
+
+    - name: Simulate pending APT upgrades
+      become: true
+      shell: >-
+        apt-get -s -o Debug::NoLocking=1 upgrade
+        | awk '/^Inst / {print}'
+      environment:
+        LC_ALL: C
+      register: sysupdate_apt_sim
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      when:
+        - sysupdate_is_debian | bool
+        - not (sysupdate_confirm | bool)
+
+    - name: Check whether snap is installed
+      command: which snap
+      register: sysupdate_snap
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Check whether flatpak is installed
+      command: which flatpak
+      register: sysupdate_flatpak
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: List snap packages
+      command: snap list --all
+      register: sysupdate_snap_list
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      when: sysupdate_snap.rc == 0
+
+    - name: List Flatpak packages
+      command: flatpak list
+      register: sysupdate_flatpak_list
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      when: sysupdate_flatpak.rc == 0
+
+    - name: Update and upgrade APT packages
+      become: true
+      apt:
+        update_cache: true
+        upgrade: safe
+        autoremove: true
+        autoclean: true
+      register: sysupdate_apt
+      when:
+        - sysupdate_is_debian | bool
+        - sysupdate_confirm | bool
+
+    - name: Refresh snap packages
+      become: true
+      command: snap refresh
+      register: sysupdate_snap_refresh
+      changed_when: sysupdate_snap_refresh.rc == 0
+      failed_when: false
+      when:
+        - sysupdate_confirm | bool
+        - sysupdate_snap.rc == 0
+
+    - name: Remove old snap revisions
+      become: true
+      shell: |
+        set -e
+        snap list --all | awk '/disabled/{print $1, $3}' | while read -r snapname revision; do
+          snap remove "$snapname" --revision="$revision"
+        done
+      register: sysupdate_snap_cleanup
+      changed_when: sysupdate_snap_cleanup.stdout | default('') | length > 0
+      failed_when: false
+      when:
+        - sysupdate_confirm | bool
+        - sysupdate_snap.rc == 0
+
+    - name: Update Flatpak packages
+      command: flatpak update -y
+      register: sysupdate_flatpak_update
+      changed_when: sysupdate_flatpak_update.rc == 0
+      failed_when: false
+      when:
+        - sysupdate_confirm | bool
+        - sysupdate_flatpak.rc == 0
+
+    - name: Remove unused Flatpak runtimes
+      command: flatpak uninstall --unused -y
+      register: sysupdate_flatpak_unused
+      changed_when: sysupdate_flatpak_unused.stdout is not search('Nothing unused to remove')
+      failed_when: false
+      when:
+        - sysupdate_confirm | bool
+        - sysupdate_flatpak.rc == 0
+
+    - name: Find old thumbnail files
+      find:
+        paths: "{{ sysupdate_home }}/.cache/thumbnails"
+        age: 30d
+        file_type: file
+      register: sysupdate_thumbs
+      failed_when: false
+      become: "{{ sysupdate_target_user != ansible_user }}"
+      become_user: "{{ sysupdate_target_user }}"
+      when:
+        - sysupdate_confirm | bool
+        - sysupdate_clean_thumbnails | bool
+
+    - name: Delete old thumbnail files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ sysupdate_thumbs.files | default([]) }}"
+      loop_control:
+        label: "{{ item.path }}"
+      become: "{{ sysupdate_target_user != ansible_user }}"
+      become_user: "{{ sysupdate_target_user }}"
+      when:
+        - sysupdate_confirm | bool
+        - sysupdate_clean_thumbnails | bool
+        - (sysupdate_thumbs.files | default([])) | length > 0
+
+    - name: Count trash items
+      command: gio list trash://
+      register: sysupdate_trash
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      become: "{{ sysupdate_target_user != ansible_user }}"
+      become_user: "{{ sysupdate_target_user }}"
+
+    - name: Read disk usage (after)
+      command: df -h /
+      register: sysupdate_df_after
+      changed_when: false
+      check_mode: false
+
+    - name: Recheck reboot requirement
+      stat:
+        path: /var/run/reboot-required
+      register: sysupdate_reboot_after
+
+    - name: sysupdate report
+      debug:
+        msg:
+          - |
+            ################################################################################
+            # HOST: {{ inventory_hostname }}
+            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
+            # user: {{ sysupdate_target_user }}
+            ################################################################################
+          - "Confirm: {{ sysupdate_confirm }}"
+          - "Disk (before): {{ sysupdate_df_before.stdout_lines | default([]) | last | default('n/a') }}"
+          - "Disk (after): {{ sysupdate_df_after.stdout_lines | default([]) | last | default('n/a') }}"
+          - "APT simulation line count: {{ sysupdate_apt_sim.stdout_lines | default([]) | length }}"
+          - "Snap: {{ 'present' if sysupdate_snap.rc == 0 else 'absent' }}"
+          - "Flatpak: {{ 'present' if sysupdate_flatpak.rc == 0 else 'absent' }}"
+          - "Trash items: {{ sysupdate_trash.stdout_lines | default([]) | length }}"
+          - "Reboot required (before): {{ sysupdate_reboot_before.stat.exists | default(false) }}"
+          - "Reboot required (after): {{ sysupdate_reboot_after.stat.exists | default(false) }}"
+          - "{{ 'Reboot required — this playbook does not reboot.' if (sysupdate_reboot_after.stat.exists | default(false)) else 'No reboot flag.' }}"

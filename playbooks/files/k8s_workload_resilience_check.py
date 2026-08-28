@@ -71,7 +71,7 @@ def main() -> int:
         )
         pdb_data = kubectl_json(["get", "pdb", "--all-namespaces"])
     except (RuntimeError, json.JSONDecodeError) as exc:
-        print(f"[ERROR] Kubernetes kaynakları alınamadı: {exc}")
+        print(f"[ERROR] Kubernetes resources could not be retrieved: {exc}")
         return 2
 
     pdbs_by_namespace: dict[str, list[dict]] = {}
@@ -92,7 +92,7 @@ def main() -> int:
         namespace = metadata.get("namespace", "default")
         if namespace in excluded:
             continue
-        name = metadata.get("name", "bilinmiyor")
+        name = metadata.get("name", "unknown")
         kind = workload.get("kind", "Workload")
         prefix = f"{namespace}/{kind}/{name}"
         spec = workload.get("spec", {})
@@ -105,14 +105,14 @@ def main() -> int:
         if kind in {"Deployment", "StatefulSet"}:
             replicas = int(spec.get("replicas", 1) or 0)
             if replicas < 2:
-                add("WARN", f"{prefix}: replica sayısı {replicas}; tek hata noktası")
+                add("WARN", f"{prefix}: replica count {replicas}; single point of failure")
             if replicas >= 2:
                 matching_pdb = any(
                     selector_matches(pdb.get("spec", {}).get("selector", {}), template_labels)
                     for pdb in pdbs_by_namespace.get(namespace, [])
                 )
                 if not matching_pdb:
-                    add("WARN", f"{prefix}: eşleşen PodDisruptionBudget yok")
+                    add("WARN", f"{prefix}: no matching PodDisruptionBudget")
                 if not template_spec.get("topologySpreadConstraints") and not (
                     template_spec.get("affinity", {})
                     .get("podAntiAffinity", {})
@@ -120,7 +120,7 @@ def main() -> int:
                 ):
                     add(
                         "INFO",
-                        f"{prefix}: zorunlu anti-affinity/topology spread tanımlı değil",
+                        f"{prefix}: required anti-affinity/topology spread is not set",
                     )
 
         for container_type, containers in (
@@ -129,7 +129,7 @@ def main() -> int:
         ):
             for container in containers:
                 container_count += 1
-                container_name = container.get("name", "bilinmiyor")
+                container_name = container.get("name", "unknown")
                 label = f"{prefix}/{container_type}/{container_name}"
                 resources = container.get("resources", {})
                 requests = resources.get("requests", {})
@@ -137,46 +137,46 @@ def main() -> int:
 
                 for resource in ("cpu", "memory"):
                     if not requests.get(resource):
-                        add("WARN", f"{label}: {resource} request tanımlı değil")
+                        add("WARN", f"{label}: {resource} request is not set")
                     if not limits.get(resource):
-                        add("INFO", f"{label}: {resource} limit tanımlı değil")
+                        add("INFO", f"{label}: {resource} limit is not set")
 
                 if container_type == "container":
                     if not container.get("readinessProbe"):
-                        add("WARN", f"{label}: readinessProbe tanımlı değil")
+                        add("WARN", f"{label}: readinessProbe is not set")
                     if not container.get("livenessProbe"):
-                        add("WARN", f"{label}: livenessProbe tanımlı değil")
+                        add("WARN", f"{label}: livenessProbe is not set")
                     if (
                         container.get("livenessProbe")
                         and not container.get("startupProbe")
                     ):
                         add(
                             "INFO",
-                            f"{label}: startupProbe yok; yavaş başlayan servisleri kontrol edin",
+                            f"{label}: no startupProbe; check slow-starting services",
                         )
 
                 image = container.get("image", "")
                 if image_has_mutable_tag(image):
-                    add("WARN", f"{label}: değişken image etiketi kullanıyor ({image})")
+                    add("WARN", f"{label}: uses a mutable image tag ({image})")
 
-    print("KUBERNETES WORKLOAD DAYANIKLILIK RAPORU")
+    print("KUBERNETES WORKLOAD RESILIENCE REPORT")
     print("=" * 88)
-    print(f"İncelenen workload: {workload_count}")
-    print(f"İncelenen container: {container_count}")
-    print(f"Hariç namespace'ler: {', '.join(sorted(excluded)) or 'yok'}")
+    print(f"Checked workload: {workload_count}")
+    print(f"Checked container: {container_count}")
+    print(f"Excluded namespaces: {', '.join(sorted(excluded)) or 'none'}")
     print("-" * 88)
     for level, message in findings:
         print(f"[{level}] {message}")
     if not findings:
-        print("[OK] Tanımlı politika kapsamında bulgu yok")
+        print("[OK] No findings under the configured policy")
     if len(findings) >= args.max_findings:
-        print(f"[WARN] Çıktı {args.max_findings} bulgu ile sınırlandı")
+        print(f"[WARN] Output limited to {args.max_findings} findings")
     counts = {
         level: sum(1 for finding_level, _ in findings if finding_level == level)
         for level in ("WARN", "INFO")
     }
     print("-" * 88)
-    print(f"Özet: {counts['WARN']} uyarı, {counts['INFO']} bilgi")
+    print(f"Summary: {counts['WARN']} warning(s), {counts['INFO']} info")
     return 0
 
 

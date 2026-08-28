@@ -34,12 +34,12 @@ def section(title: str) -> list[str]:
 def classify_bind(addr: str) -> str:
     a = addr.strip().lower()
     if a in ("*", "0.0.0.0", "::", "[::]"):
-        return "TUM_ARAYUZLER (dışarıdan erişilebilir olabilir)"
+        return "ALL_INTERFACES (may be reachable from outside)"
     if a in ("127.0.0.1", "::1", "[::1]", "localhost"):
-        return "SADECE_LOCALHOST"
+        return "LOCALHOST_ONLY"
     if a.startswith("10.") or a.startswith("192.168.") or a.startswith("172."):
-        return f"OZEL_IP ({addr}) — iç ağ arayüzü"
-    return f"BELIRLI_IP ({addr})"
+        return f"PRIVATE_IP ({addr}) — internal network interface"
+    return f"SPECIFIC_IP ({addr})"
 
 
 def parse_ss_process(proc: str) -> str:
@@ -107,7 +107,7 @@ def parse_ss_lines(out: str) -> list[dict[str, Any]]:
 
 
 def collect_listening() -> tuple[list[str], list[dict[str, Any]]]:
-    lines = section("Dinleyen portlar (ss)")
+    lines = section("Listening ports (ss)")
     rows: list[dict[str, Any]] = []
 
     # Prefer JSON if available
@@ -126,11 +126,11 @@ def collect_listening() -> tuple[list[str], list[dict[str, Any]]]:
         # without -p if permission denied
         rc2, out2, err2 = run("ss -H -tuln")
         if rc2 != 0:
-            lines.append(f"ss alınamadı: {err or err2}")
+            lines.append(f"ss could not be retrieved: {err or err2}")
             return lines, rows
         out = out2
         lines.append(
-            "UYARI: süreç adları görünmüyor (ss -p için root/izin gerekebilir)."
+            "WARNING: process names are not visible (ss -p may need root/permission)."
         )
 
     rows = parse_ss_lines(out)
@@ -144,31 +144,31 @@ def collect_listening() -> tuple[list[str], list[dict[str, Any]]]:
     rows.sort(key=port_key)
 
     lines.append(
-        f"{'PROTO':<6} {'PORT':>6}  {'BIND_ADDR':<22}  NASIL_ACIK / UYGULAMA"
+        f"{'PROTO':<6} {'PORT':>6}  {'BIND_ADDR':<22}  HOW_OPEN / APPLICATION"
     )
     lines.append("-" * 110)
     for r in rows:
         lines.append(
             f"{r['proto']:<6} {r['port']:>6}  {r['addr']:<22}  {r['bind']}"
         )
-        lines.append(f"{'':6} {'':6}  {'':22}  uygulama: {r['process']}")
+        lines.append(f"{'':6} {'':6}  {'':22}  application: {r['process']}")
 
     # summary by bind type
     by_bind = defaultdict(int)
     by_proto = defaultdict(int)
     for r in rows:
         by_proto[r["proto"]] += 1
-        if "TUM_ARAYUZLER" in r["bind"]:
-            by_bind["tum_arayuz"] += 1
+        if "ALL_INTERFACES" in r["bind"]:
+            by_bind["all_interfaces"] += 1
         elif "LOCALHOST" in r["bind"]:
             by_bind["localhost"] += 1
         else:
-            by_bind["belirli_ip"] += 1
+            by_bind["specific_ip"] += 1
     lines.append(
-        f"Özet: toplam_dinleme={len(rows)} | "
+        f"Summary: total_listening={len(rows)} | "
         f"tcp/udp={dict(by_proto)} | "
-        f"tum_arayuz={by_bind['tum_arayuz']} localhost={by_bind['localhost']} "
-        f"belirli_ip={by_bind['belirli_ip']}"
+        f"all_interfaces={by_bind['all_interfaces']} localhost={by_bind['localhost']} "
+        f"specific_ip={by_bind['specific_ip']}"
     )
     return lines, rows
 
@@ -177,12 +177,12 @@ def collect_ufw() -> list[str]:
     lines = []
     if not shutil.which("ufw"):
         return lines
-    lines.extend(section("UFW durumu"))
+    lines.extend(section("UFW status"))
     rc, out, err = run("ufw status verbose")
     if rc == 0 and out:
         lines.append(out)
     else:
-        lines.append(err or "ufw status alınamadı")
+        lines.append(err or "ufw status could not be retrieved")
     return lines
 
 
@@ -206,7 +206,7 @@ def collect_firewalld() -> list[str]:
 
 
 def collect_iptables(listen_ports: list[dict[str, Any]]) -> list[str]:
-    lines = section("iptables / nft özeti")
+    lines = section("iptables / nft summary")
     ports = sorted(
         {
             r["port"]
@@ -220,10 +220,10 @@ def collect_iptables(listen_ports: list[dict[str, Any]]) -> list[str]:
     if shutil.which("nft"):
         rc, out, err = run("nft list ruleset")
         if rc == 0 and out.strip():
-            lines.append("--- nftables ruleset (kısaltılmış / ilgili) ---")
+            lines.append("--- nftables ruleset (truncated / relevant) ---")
             # Full ruleset can be huge on k8s; summarize + filter port mentions
             all_lines = out.splitlines()
-            lines.append(f"Toplam nft satır: {len(all_lines)}")
+            lines.append(f"Total nft lines: {len(all_lines)}")
             # Show table/chain headers and first policies
             headers = [
                 l
@@ -235,7 +235,7 @@ def collect_iptables(listen_ports: list[dict[str, Any]]) -> list[str]:
             ]
             lines.extend(headers[:40])
             if ports:
-                lines.append("--- Dinlenen portlara değinen nft satırları ---")
+                lines.append("--- nft lines mentioning listening ports ---")
                 port_hits = []
                 for l in all_lines:
                     for p in ports:
@@ -252,15 +252,15 @@ def collect_iptables(listen_ports: list[dict[str, Any]]) -> list[str]:
                             seen.add(h)
                             lines.append(h)
                         if len(seen) >= 80:
-                            lines.append("... (daha fazla eşleşme kısaltıldı)")
+                            lines.append("... (more matches truncated)")
                             break
                 else:
                     lines.append(
-                        "(Dinlenen port numarası geçen bariz nft kuralı bulunamadı; "
-                        "policy ACCEPT ise genel açık olabilir.)"
+                        "(No obvious nft rule mentioning a listening port number; "
+                        "if policy is ACCEPT it may be generally open.)"
                     )
         else:
-            lines.append("nft ruleset boş veya alınamadı.")
+            lines.append("nft ruleset empty or could not be retrieved.")
 
     if shutil.which("iptables"):
         lines.append("--- iptables filter (iptables -L -n -v) ---")
@@ -275,7 +275,7 @@ def collect_iptables(listen_ports: list[dict[str, Any]]) -> list[str]:
             lines.extend(pol[:30] if pol else out.splitlines()[:20])
             # Show ACCEPT/DROP/REJECT with dpt for listening ports
             if ports:
-                lines.append("--- Dinlenen portlara ait iptables satırları (filter) ---")
+                lines.append("--- iptables lines for listening ports (filter) ---")
                 hits = []
                 for l in out.splitlines():
                     for p in ports:
@@ -289,20 +289,20 @@ def collect_iptables(listen_ports: list[dict[str, Any]]) -> list[str]:
                             seen.add(h)
                             lines.append(h)
                         if len(seen) >= 60:
-                            lines.append("... (kısaltıldı)")
+                            lines.append("... (truncated)")
                             break
                 else:
                     lines.append(
-                        "(dpt:<port> eşleşmesi yok — UFW/nft arkasında veya policy ACCEPT)"
+                        "(no dpt:<port> match — behind UFW/nft or policy ACCEPT)"
                     )
             # Truncated full dump tip
             lines.append(
-                f"(Tam filter çıktı {len(out.splitlines())} satır; özet yukarıda.)"
+                f"(Full filter output {len(out.splitlines())} lines; summary above.)"
             )
         else:
-            lines.append(f"iptables filter alınamadı: {err or '-'}")
+            lines.append(f"iptables filter could not be retrieved: {err or '-'}")
 
-        lines.append("--- iptables nat (özet) ---")
+        lines.append("--- iptables nat (summary) ---")
         rc, out, err = run("iptables -t nat -L -n -v")
         if rc == 0 and out:
             pol = [l for l in out.splitlines() if l.startswith("Chain ")]
@@ -316,15 +316,15 @@ def collect_iptables(listen_ports: list[dict[str, Any]]) -> list[str]:
             for l in interesting[:40]:
                 lines.append(l.rstrip())
             if not interesting:
-                lines.append("(belirgin DNAT/REDIRECT/MASQUERADE yok veya görülemedi)")
+                lines.append("(no obvious DNAT/REDIRECT/MASQUERADE or not visible)")
         else:
-            lines.append(f"iptables nat alınamadı: {err or '-'}")
+            lines.append(f"iptables nat could not be retrieved: {err or '-'}")
 
         # iptables-save short policy extract
         if shutil.which("iptables-save"):
             rc, out, _ = run("iptables-save -c")
             if rc == 0 and out:
-                lines.append("--- iptables-save policy / önemli satırlar ---")
+                lines.append("--- iptables-save policy / important lines ---")
                 for l in out.splitlines():
                     if (
                         l.startswith(":")
@@ -346,45 +346,45 @@ def collect_iptables(listen_ports: list[dict[str, Any]]) -> list[str]:
                 input_rules = [
                     l for l in out.splitlines() if l.startswith("-A INPUT")
                 ]
-                lines.append(f"INPUT kural sayısı: {len(input_rules)}")
+                lines.append(f"INPUT rule count: {len(input_rules)}")
                 for l in input_rules[:25]:
                     lines.append(l)
                 if len(input_rules) > 25:
-                    lines.append(f"... +{len(input_rules) - 25} INPUT kuralı daha")
+                    lines.append(f"... +{len(input_rules) - 25} more INPUT rules")
 
     if not shutil.which("iptables") and not shutil.which("nft"):
-        lines.append("iptables/nft bulunamadı.")
+        lines.append("iptables/nft not found.")
 
     return lines
 
 
 def collect_correlation(rows: list[dict[str, Any]]) -> list[str]:
-    lines = section("Yorum / risk özeti")
-    ext = [r for r in rows if "TUM_ARAYUZLER" in r["bind"]]
+    lines = section("Notes / risk summary")
+    ext = [r for r in rows if "ALL_INTERFACES" in r["bind"]]
     local = [r for r in rows if "LOCALHOST" in r["bind"]]
     lines.append(
-        f"Tüm arayüzlerde dinleyen: {len(ext)} | Sadece localhost: {len(local)}"
+        f"Listening on all interfaces: {len(ext)} | Localhost only: {len(local)}"
     )
     if ext:
-        lines.append("Dışarıya bakıyor olabilecek servisler (TUM_ARAYUZLER):")
+        lines.append("Services that may be exposed externally (ALL_INTERFACES):")
         for r in ext:
             lines.append(
                 f"  - {r['proto']}/{r['port']} → {r['process']}"
             )
     lines.append(
-        "Not: 'Dinliyor' ≠ 'firewall izin veriyor'. nft/iptables/UFW DROP ise "
-        "dışarıdan kapalı olabilir. Tersine policy ACCEPT ise dinleyen portlar açık sayılır."
+        "Note: 'Listening' ≠ 'firewall allows it'. If nft/iptables/UFW DROP, "
+        "it may be closed from outside. Conversely, if policy is ACCEPT, listening ports count as open."
     )
     lines.append(
-        "K8s/k3s node'larında kube-proxy/CNI yüzünden iptables/nft çok kalabalık olabilir; "
-        "NodePort için ayrıca playbook 02 kullanılabilir."
+        "On K8s/k3s nodes iptables/nft can be very noisy due to kube-proxy/CNI; "
+        "playbook 02 can also be used for NodePort."
     )
     return lines
 
 
 def main() -> None:
     lines: list[str] = []
-    lines.append("Host açık portlar + firewall raporu (salt-okunur)")
+    lines.append("Host open ports + firewall report (read-only)")
 
     listen_lines, rows = collect_listening()
     lines.extend(listen_lines)
@@ -393,7 +393,7 @@ def main() -> None:
     lines.extend(collect_iptables(rows))
     lines.extend(collect_correlation(rows))
     lines.append("")
-    lines.append("Detay: docs/20_check_host_ports_firewall.md")
+    lines.append("Details: docs/20_check_host_ports_firewall.md")
     print("\n".join(lines))
 
 

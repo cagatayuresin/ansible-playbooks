@@ -87,7 +87,7 @@ def main() -> int:
         events = kubectl_json(["get", "events", "--all-namespaces"])
         pvcs = kubectl_json(["get", "pvc", "--all-namespaces"])
     except (RuntimeError, json.JSONDecodeError) as exc:
-        print(f"[ERROR] Pod tanı kaynakları alınamadı: {exc}")
+        print(f"[ERROR] Pod diagnostic resources could not be retrieved: {exc}")
         return 2
 
     pvc_status: dict[tuple[str, str], str] = {}
@@ -96,7 +96,7 @@ def main() -> int:
         pvc_status[
             (
                 metadata.get("namespace", "default"),
-                metadata.get("name", "bilinmiyor"),
+                metadata.get("name", "unknown"),
             )
         ] = pvc.get("status", {}).get("phase", "Unknown")
 
@@ -123,13 +123,13 @@ def main() -> int:
     )
     affected = affected[: args.max_pods]
 
-    print("KUBERNETES POD ZAMANLAMA / BAŞLATMA TANI RAPORU")
+    print("KUBERNETES POD SCHEDULING / STARTUP DIAGNOSTIC REPORT")
     print("=" * 100)
-    print(f"Toplam pod: {len(pods.get('items', []))}")
-    print(f"Tanı gerektiren pod: {len(affected)}")
+    print(f"Total pods: {len(pods.get('items', []))}")
+    print(f"Pods requiring diagnosis: {len(affected)}")
 
     if not affected:
-        print("[OK] Pending veya bilinen başlatma hatasına sahip pod yok")
+        print("[OK] No pods in Pending or with a known startup failure")
         return 0
 
     now = datetime.now(timezone.utc)
@@ -137,18 +137,18 @@ def main() -> int:
         metadata = pod.get("metadata", {})
         spec = pod.get("spec", {})
         namespace = metadata.get("namespace", "default")
-        name = metadata.get("name", "bilinmiyor")
+        name = metadata.get("name", "unknown")
         uid = metadata.get("uid", "")
         created = parse_time(metadata.get("creationTimestamp"))
         age = now - created if created.year > 1 else None
 
         print("\n" + "-" * 100)
         print(
-            f"POD: {namespace}/{name} | node={spec.get('nodeName', '<atanmadı>')} "
-            f"| yaş={str(age).split('.')[0] if age else 'bilinmiyor'}"
+            f"POD: {namespace}/{name} | node={spec.get('nodeName', '<unassigned>')} "
+            f"| age={str(age).split('.')[0] if age else 'unknown'}"
         )
         for problem in problems:
-            print(f"  [NEDEN] {problem}")
+            print(f"  [REASON] {problem}")
 
         claims = [
             volume.get("persistentVolumeClaim", {}).get("claimName")
@@ -156,16 +156,16 @@ def main() -> int:
             if volume.get("persistentVolumeClaim")
         ]
         for claim in claims:
-            phase = pvc_status.get((namespace, claim), "Bulunamadı")
+            phase = pvc_status.get((namespace, claim), "Not found")
             marker = "OK" if phase == "Bound" else "PVC"
             print(f"  [{marker}] {claim}: {phase}")
 
         if spec.get("nodeSelector"):
-            print(f"  [BİLGİ] nodeSelector={spec.get('nodeSelector')}")
+            print(f"  [INFO] nodeSelector={spec.get('nodeSelector')}")
         if spec.get("affinity"):
-            print("  [BİLGİ] affinity kuralları mevcut")
+            print("  [INFO] affinity rules present")
         if spec.get("tolerations"):
-            print(f"  [BİLGİ] toleration sayısı={len(spec.get('tolerations', []))}")
+            print(f"  [INFO] toleration count={len(spec.get('tolerations', []))}")
 
         pod_events = sorted(
             events_by_uid.get(uid, []),
@@ -183,7 +183,7 @@ def main() -> int:
             )
 
     if len(affected) >= args.max_pods:
-        print(f"\n[WARN] Çıktı {args.max_pods} pod ile sınırlandı")
+        print(f"\n[WARN] Output limited to {args.max_pods} pods")
     return 0
 
 

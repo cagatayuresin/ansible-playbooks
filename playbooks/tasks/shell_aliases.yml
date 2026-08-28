@@ -1,0 +1,275 @@
+---
+# Shared: install or remove a bash-compatible alias pack for the user's login shell.
+# Expected play vars:
+#   shell_aliases_pack          kubectl|helm|docker|git|system|python|virt|helpers|sysupdate|all
+#   shell_aliases_state         present|absent
+#   shell_aliases_target_user   default: ansible_user
+#   shell_aliases_rc_files      optional override; default follows the login shell
+#   shell_aliases_src           source file when present (relative to the playbook directory)
+#   shell_aliases_remove_all_confirm  required confirmation when pack=all and absent
+# Produces: shell_aliases_home, shell_aliases_dir, shell_aliases_login_shell, shell_aliases_installed_files
+
+- name: Pin the alias target user
+  set_fact:
+    shell_aliases_target_user: "{{ shell_aliases_target_user | default(ansible_user) }}"
+    shell_aliases_known_packs:
+      - kubectl
+      - helm
+      - docker
+      - git
+      - system
+      - python
+      - virt
+      - helpers
+      - sysupdate
+    shell_aliases_rc_by_shell:
+      bash: [".bashrc"]
+      zsh: [".zshrc"]
+      ksh: [".kshrc"]
+      mksh: [".mkshrc"]
+      sh: [".profile"]
+      dash: [".profile"]
+
+- name: Validate pack name
+  fail:
+    msg: "Unknown alias pack: {{ shell_aliases_pack }}. Valid packs: {{ shell_aliases_known_packs | join(', ') }} or all"
+  when:
+    - shell_aliases_pack != 'all'
+    - shell_aliases_pack not in shell_aliases_known_packs
+
+- name: Read the target user's passwd record
+  getent:
+    database: passwd
+    key: "{{ shell_aliases_target_user }}"
+  check_mode: false
+
+- name: Compute alias paths and login shell
+  set_fact:
+    shell_aliases_home: "{{ getent_passwd[shell_aliases_target_user][4] }}"
+    shell_aliases_dir: "{{ getent_passwd[shell_aliases_target_user][4] }}/.ansible-shell-aliases"
+    shell_aliases_legacy_dir: "{{ getent_passwd[shell_aliases_target_user][4] }}/.ansible-zsh-aliases"
+    shell_aliases_need_become: "{{ shell_aliases_target_user != ansible_user }}"
+    shell_aliases_login_shell: "{{ getent_passwd[shell_aliases_target_user][5] | basename }}"
+
+- name: Select rc files from the login shell
+  set_fact:
+    shell_aliases_rc_files: "{{ shell_aliases_rc_files | default(shell_aliases_rc_by_shell[shell_aliases_login_shell] | default(['.profile'])) }}"
+
+- name: Warn when the login shell cannot source POSIX alias files
+  debug:
+    msg: >-
+      Login shell '{{ shell_aliases_login_shell }}' cannot source these bash-compatible
+      packs. Override with --extra-vars '{"shell_aliases_rc_files": [".bashrc"]}'
+      or change the user's login shell.
+  when: shell_aliases_login_shell in ['fish', 'nologin', 'false']
+
+- name: List installed alias packs
+  find:
+    paths: "{{ item }}"
+    patterns:
+      - "*.sh"
+      - "*.zsh"
+    file_type: file
+  loop:
+    - "{{ shell_aliases_dir }}"
+    - "{{ shell_aliases_legacy_dir }}"
+  register: shell_aliases_find
+  failed_when: false
+  changed_when: false
+  check_mode: false
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+
+- name: Produce installed pack fact
+  set_fact:
+    shell_aliases_installed_files: "{{ shell_aliases_find.results | default([]) | map(attribute='files') | flatten | map(attribute='path') | list }}"
+    shell_aliases_installed_packs: "{{ shell_aliases_find.results | default([]) | map(attribute='files') | flatten | map(attribute='path') | map('regex_replace', '^.*/', '') | map('regex_replace', '\\.(zsh|sh)$', '') | unique | list }}"
+
+- name: Report existing Ansible alias packs
+  debug:
+    msg:
+      - |
+        ################################################################################
+        # HOST: {{ inventory_hostname }}
+        # user: {{ shell_aliases_target_user }}
+        # home: {{ shell_aliases_home }}
+        # login shell: {{ shell_aliases_login_shell }}
+        # rc files: {{ shell_aliases_rc_files | join(', ') }}
+        # dir:  {{ shell_aliases_dir }}
+        ################################################################################
+      - "Installed packs: {{ shell_aliases_installed_packs | default([]) | join(', ') | default('(none)', true) }}"
+      - "Requested action: state={{ shell_aliases_state }} pack={{ shell_aliases_pack }}"
+
+- name: Bulk removal not confirmed, files were not touched
+  debug:
+    msg: "shell_aliases_remove_all_confirm=false → report only. To delete all packs, pass --extra-vars 'shell_aliases_remove_all_confirm=true'"
+  when:
+    - shell_aliases_state == 'absent'
+    - shell_aliases_pack == 'all'
+    - not (shell_aliases_remove_all_confirm | default(false) | bool)
+
+- name: Create the alias directory
+  file:
+    path: "{{ shell_aliases_dir }}"
+    state: directory
+    owner: "{{ shell_aliases_target_user if (shell_aliases_need_become | bool) else omit }}"
+    mode: "0700"
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  when:
+    - shell_aliases_state == 'present'
+    - shell_aliases_pack != 'all'
+
+- name: Copy the alias pack file
+  copy:
+    src: "{{ shell_aliases_src }}"
+    dest: "{{ shell_aliases_dir }}/{{ shell_aliases_pack }}.sh"
+    owner: "{{ shell_aliases_target_user if (shell_aliases_need_become | bool) else omit }}"
+    mode: "0644"
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  when:
+    - shell_aliases_state == 'present'
+    - shell_aliases_pack != 'all'
+
+- name: Add the Ansible alias source to the login shell rc files
+  blockinfile:
+    path: "{{ shell_aliases_home }}/{{ item }}"
+    create: true
+    owner: "{{ shell_aliases_target_user if (shell_aliases_need_become | bool) else omit }}"
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED SHELL ALIASES"
+    block: |
+      if [ -d "$HOME/.ansible-shell-aliases" ]; then
+        for _ansible_shell_alias_file in "$HOME/.ansible-shell-aliases"/*.sh; do
+          [ -r "$_ansible_shell_alias_file" ] && . "$_ansible_shell_alias_file"
+        done
+        unset _ansible_shell_alias_file
+      fi
+  loop: "{{ shell_aliases_rc_files }}"
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  when:
+    - shell_aliases_state == 'present'
+    - shell_aliases_pack != 'all'
+    - shell_aliases_login_shell not in ['fish', 'nologin', 'false']
+
+- name: Remove a single alias pack
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ shell_aliases_dir }}/{{ shell_aliases_pack }}.sh"
+    - "{{ shell_aliases_legacy_dir }}/{{ shell_aliases_pack }}.zsh"
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  when:
+    - shell_aliases_state == 'absent'
+    - shell_aliases_pack != 'all'
+
+- name: Remove the entire Ansible alias directory
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ shell_aliases_dir }}"
+    - "{{ shell_aliases_legacy_dir }}"
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  when:
+    - shell_aliases_state == 'absent'
+    - shell_aliases_pack == 'all'
+    - shell_aliases_remove_all_confirm | default(false) | bool
+
+- name: Remove the legacy zsh alias directory after install
+  file:
+    path: "{{ shell_aliases_legacy_dir }}"
+    state: absent
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  when:
+    - shell_aliases_state == 'present'
+    - shell_aliases_pack != 'all'
+
+- name: Count remaining packs after removal
+  find:
+    paths: "{{ item }}"
+    patterns:
+      - "*.sh"
+      - "*.zsh"
+    file_type: file
+  loop:
+    - "{{ shell_aliases_dir }}"
+    - "{{ shell_aliases_legacy_dir }}"
+  register: shell_aliases_find_after
+  failed_when: false
+  changed_when: false
+  check_mode: false
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  when:
+    - shell_aliases_state == 'absent'
+    - shell_aliases_pack != 'all'
+
+- name: Delete alias directories if the last pack was removed
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ shell_aliases_dir }}"
+    - "{{ shell_aliases_legacy_dir }}"
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  when:
+    - shell_aliases_state == 'absent'
+    - shell_aliases_pack != 'all'
+    - (shell_aliases_find_after.results | default([]) | map(attribute='files') | flatten | list | length) == 0
+
+- name: Remove the legacy zsh alias block after install
+  blockinfile:
+    path: "{{ shell_aliases_home }}/{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED ZSH ALIASES"
+    state: absent
+  loop:
+    - .bashrc
+    - .zshrc
+    - .profile
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  failed_when: false
+  when:
+    - shell_aliases_state == 'present'
+    - shell_aliases_pack != 'all'
+
+- name: Remove alias blocks from rc files
+  blockinfile:
+    path: "{{ shell_aliases_home }}/{{ item.0 }}"
+    marker: "{{ item.1 }}"
+    state: absent
+  loop: "{{ query('nested', (shell_aliases_rc_files + ['.bashrc', '.zshrc', '.profile']) | unique, ['# {mark} ANSIBLE MANAGED SHELL ALIASES', '# {mark} ANSIBLE MANAGED ZSH ALIASES']) }}"
+  become: "{{ shell_aliases_need_become }}"
+  become_user: "{{ shell_aliases_target_user }}"
+  failed_when: false
+  when: >-
+    shell_aliases_state == 'absent'
+    and (
+      (
+        shell_aliases_pack == 'all'
+        and (shell_aliases_remove_all_confirm | default(false) | bool)
+      )
+      or (
+        shell_aliases_pack != 'all'
+        and ((shell_aliases_find_after.results | default([]) | map(attribute='files') | flatten | list | length) == 0)
+      )
+    )
+
+- name: Alias action summary
+  debug:
+    msg:
+      - "Pack: {{ shell_aliases_pack }}"
+      - "State: {{ shell_aliases_state }}"
+      - "User: {{ shell_aliases_target_user }} ({{ shell_aliases_home }})"
+      - "Login shell: {{ shell_aliases_login_shell }}"
+      - "rc files: {{ shell_aliases_rc_files | join(', ') }}"
+      - "Open a new session or source the rc file(s) above."
+  when: not (shell_aliases_state == 'absent' and shell_aliases_pack == 'all' and not (shell_aliases_remove_all_confirm | default(false) | bool))

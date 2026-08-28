@@ -1,47 +1,48 @@
 ---
+lang: en
 title: "41 · patch_and_reboot_nodes"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 41
 ---
 
-# 41_patch_and_reboot_nodes.yml - Kullanım Kılavuzu
+# 41_patch_and_reboot_nodes.yml - Usage Guide
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![Maintenance](https://img.shields.io/badge/Maintenance-Serial_1-F59E0B?style=flat)
 
-## ⚠️ Canlı node'larda paket güncelleme ve reboot yapabilir
+## ⚠️ Can update packages and reboot live nodes
 
-Varsayılan çalıştırma yalnızca bekleyen paketleri ve reboot ihtiyacını raporlar. Değişiklik için `node_patch_confirm=true` zorunludur.
+A default run only reports pending packages and whether a reboot is needed. Changes require `node_patch_confirm=true`.
 
-Onaylı bakım akışı:
+Confirmed maintenance flow:
 
-1. Kubernetes node ise ilk control-plane üzerinden drain
-2. Debian'da `apt dist-upgrade`, RedHat'te `dnf update`
-3. Reboot ayrıca onaylandıysa ve gerekiyorsa reboot
-4. Node'u uncordon
-5. Hata durumunda rescue bloğuyla uncordon denemesi
+1. If it is a Kubernetes node, drain via the first control-plane
+2. `apt dist-upgrade` on Debian, `dnf update` on RedHat
+3. Reboot if reboot was also confirmed and is required
+4. Uncordon the node
+5. On error, attempt uncordon from the rescue block
 
-Host'lar `serial: 1` ile sırayla işlenir.
+Hosts are processed one at a time with `serial: 1`.
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `node_patch_confirm` | `false` | Paket güncellemesini açar |
-| `node_reboot_confirm` | `false` | Gerekiyorsa reboot yapılmasına izin verir |
-| `node_reboot_always` | `false` | Reboot işareti olmasa da reboot eder |
-| `node_allow_single_node_maintenance` | `false` | Singlenode bakımını ayrıca onaylar |
-| `kubernetes_node_name` | `ansible_hostname` | Kubernetes API içindeki node adı |
+| `node_patch_confirm` | `false` | Enables package updates |
+| `node_reboot_confirm` | `false` | Allows a reboot when required |
+| `node_reboot_always` | `false` | Reboots even if there is no reboot flag |
+| `node_allow_single_node_maintenance` | `false` | Extra confirmation for singlenode maintenance |
+| `kubernetes_node_name` | `ansible_hostname` | Node name in the Kubernetes API |
 
-## Çalıştırma
+## How to run
 
 ```bash
-# Yalnızca rapor:
+# Report only:
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/41_patch_and_reboot_nodes.yml
 
-# Bir worker üzerinde patch ve gerekiyorsa reboot:
+# Patch a worker and reboot if required:
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/41_patch_and_reboot_nodes.yml \
   --limit worker1 \
   --extra-vars 'node_patch_confirm=true node_reboot_confirm=true'
 ```
 
-Singlenode cluster için ayrıca `node_allow_single_node_maintenance=true` verilmelidir. Bakım öncesinde güncel etcd yedeğini `32_verify_etcd_backup.yml` ile doğrulayın.
+A singlenode cluster also requires `node_allow_single_node_maintenance=true`. Before maintenance, verify a current etcd backup with `32_verify_etcd_backup.yml`.

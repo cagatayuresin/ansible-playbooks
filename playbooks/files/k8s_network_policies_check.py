@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Salt-okunur: NetworkPolicy inventory per namespace."""
+"""Read-only: NetworkPolicy inventory per namespace."""
 from __future__ import annotations
 
 import json
@@ -33,11 +33,11 @@ def main() -> None:
 
     lines: list[str] = []
     scope = f"namespace={ns_filter}" if ns_filter else "namespace=ALL"
-    lines.append(f"NetworkPolicy envanteri ({scope}, salt-okunur)")
+    lines.append(f"NetworkPolicy inventory ({scope}, read-only)")
 
     rc, _, err = run("kubectl cluster-info")
     if rc != 0:
-        lines.append(f"kubectl erişimi yok: {err}")
+        lines.append(f"kubectl access missing: {err}")
         print("\n".join(lines))
         return
 
@@ -47,7 +47,7 @@ def main() -> None:
     else:
         rc, out, err = run("kubectl get ns -o json")
         if rc != 0:
-            lines.append(f"namespaces alınamadı: {err}")
+            lines.append(f"namespaces could not be retrieved: {err}")
             print("\n".join(lines))
             return
         namespaces = [
@@ -62,7 +62,7 @@ def main() -> None:
         # older short name
         rc, out, err = run(f"kubectl get netpol {ns_flag} -o json")
     if rc != 0 or not out:
-        lines.append(f"NetworkPolicy listesi alınamadı: {err}")
+        lines.append(f"NetworkPolicy list could not be retrieved: {err}")
         print("\n".join(lines))
         return
 
@@ -73,27 +73,27 @@ def main() -> None:
         n = meta.get("namespace") or "-"
         by_ns[n].append(it)
 
-    lines.extend(section("Namespace özeti (policy var mı?)"))
-    lines.append(f"{'NAMESPACE':<40} {'NETPOL':>6}  DURUM")
+    lines.extend(section("Namespace summary (is there a policy?)"))
+    lines.append(f"{'NAMESPACE':<40} {'NETPOL':>6}  STATUS")
     lines.append("-" * 70)
     open_ns = []
     for n in sorted(namespaces):
         count = len(by_ns.get(n) or [])
         if count == 0:
             # skip system ns noise optionally still show
-            status = "POLICY YOK (default allow — CNI'ye bağlı)"
+            status = "NO POLICY (default allow — depends on CNI)"
             open_ns.append(n)
         else:
-            status = "policy tanımlı"
+            status = "policy defined"
         lines.append(f"{n:<40} {count:>6}  {status}")
 
     lines.append(
-        f"Özet: ns={len(namespaces)} | policy'siz ns={len(open_ns)} | toplam NetworkPolicy={len(items)}"
+        f"Summary: ns={len(namespaces)} | ns without policy={len(open_ns)} | total NetworkPolicy={len(items)}"
     )
 
-    lines.extend(section("NetworkPolicy detayları"))
+    lines.extend(section("NetworkPolicy details"))
     if not items:
-        lines.append("(hiç NetworkPolicy yok)")
+        lines.append("(no NetworkPolicy)")
     else:
         for it in sorted(
             items,
@@ -112,7 +112,7 @@ def main() -> None:
             egress = spec.get("egress")
             sel = pod_sel.get("matchLabels") or pod_sel
             if pod_sel == {}:
-                sel_s = "TÜM pod'lar (boş podSelector)"
+                sel_s = "ALL pods (empty podSelector)"
             else:
                 sel_s = str(sel)
             lines.append(f"- {n}/{name}")
@@ -120,23 +120,23 @@ def main() -> None:
             lines.append(f"    podSelector: {sel_s}")
             if "Ingress" in (policy_types or ["Ingress"]) or ingress is not None:
                 if ingress == []:
-                    lines.append("    ingress: DENY-ALL (boş liste)")
+                    lines.append("    ingress: DENY-ALL (empty list)")
                 elif ingress is None and "Ingress" in (policy_types or []):
-                    lines.append("    ingress: (tanımsız — tipe bak)")
+                    lines.append("    ingress: (undefined — check type)")
                 else:
-                    lines.append(f"    ingress kuralları: {len(ingress or [])}")
+                    lines.append(f"    ingress rules: {len(ingress or [])}")
             if "Egress" in (policy_types or []) or egress is not None:
                 if egress == []:
-                    lines.append("    egress: DENY-ALL (boş liste)")
+                    lines.append("    egress: DENY-ALL (empty list)")
                 else:
-                    lines.append(f"    egress kuralları: {len(egress or [])}")
+                    lines.append(f"    egress rules: {len(egress or [])}")
 
     lines.append("")
     lines.append(
-        "Yorum: Policy'siz namespace + default-allow CNI = pod'lar arası serbest trafik. "
-        "Boş ingress [] = o selector için giriş yok."
+        "Note: Namespace without policy + default-allow CNI = unrestricted pod-to-pod traffic. "
+        "Empty ingress [] = no ingress for that selector."
     )
-    lines.append("Detay: docs/28_check_network_policies.md")
+    lines.append("Details: docs/28_check_network_policies.md")
     print("\n".join(lines))
 
 

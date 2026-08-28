@@ -1,5 +1,5 @@
 ---
-- name: Metrics-server Kurulum ve İstatistik
+- name: Metrics-server install and stats
   hosts: master:singlenode
   gather_facts: true
   environment:
@@ -7,32 +7,32 @@
 
   vars:
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
-    # Tekrarlanabilir kurulum için release sabitlenmiştir; --extra-vars ile değiştirilebilir.
+    # Release is pinned for repeatable installs; override with --extra-vars.
     metrics_server_version: "v0.8.1"
     metrics_server_manifest_url: >-
       https://github.com/kubernetes-sigs/metrics-server/releases/download/{{ metrics_server_version }}/components.yaml
-    # On-prem / self-signed kubelet sertifikaları için genelde gerekir
+    # Usually required for on-prem / self-signed kubelet certificates
     metrics_server_kubelet_insecure_tls: true
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Metrics-server durumunu kontrol et
+    - name: Check metrics-server status
       import_tasks: tasks/metrics_server_check.yml
       when: inventory_hostname == first_control_plane
 
-    - name: Metrics-server kurulumunu sağla
+    - name: Ensure metrics-server is installed
       import_tasks: tasks/metrics_server_install.yml
       when:
         - inventory_hostname == first_control_plane
         - kubectl_check.rc | default(1) == 0
 
-    - name: Kurulum sonrası metrics-server durumunu yeniden kontrol et
+    - name: Recheck metrics-server status after install
       import_tasks: tasks/metrics_server_check.yml
       when: inventory_hostname == first_control_plane
 
-    - name: Metrics-server istatistiklerini al
+    - name: Collect metrics-server stats
       import_tasks: tasks/metrics_server_report.yml
       when: inventory_hostname == first_control_plane

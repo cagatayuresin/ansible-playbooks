@@ -45,43 +45,43 @@ def read_file(path: str) -> str:
     try:
         return Path(path).read_text(encoding="utf-8", errors="replace").strip()
     except Exception as e:
-        return f"(okunamadı: {e})"
+        return f"(unreadable: {e})"
 
 
 def collect_interfaces() -> list[str]:
-    lines = section("Ağ arayüzleri / adresler")
+    lines = section("Network interfaces / addresses")
     rc, out, err = run("ip -br addr")
     if rc == 0 and out:
         lines.append(out)
     else:
         rc2, out2, _ = run("hostname -I")
-        lines.append(out2 or err or "ip/hostname alınamadı")
+        lines.append(out2 or err or "ip/hostname could not be retrieved")
     return lines
 
 
 def collect_routes() -> list[str]:
-    lines = section("Rotalar / varsayılan gateway")
+    lines = section("Routes / default gateway")
     rc, out, _ = run("ip route")
     if rc == 0 and out:
         lines.append(out)
         default = [l for l in out.splitlines() if l.startswith("default ")]
         if default:
-            lines.append(f"Varsayılan rota: {default[0]}")
+            lines.append(f"Default route: {default[0]}")
         else:
-            lines.append("UYARI: default route YOK — dış ağ/internet genelde mümkün olmaz.")
+            lines.append("WARNING: no default route — external network/internet is usually impossible.")
     else:
-        lines.append("ip route alınamadı")
+        lines.append("ip route could not be retrieved")
     return lines
 
 
 def collect_dns_config() -> list[str]:
-    lines = section("DNS yapılandırması")
+    lines = section("DNS configuration")
     lines.append("--- /etc/resolv.conf ---")
     resolv = read_file("/etc/resolv.conf")
-    lines.append(resolv if resolv else "(boş)")
+    lines.append(resolv if resolv else "(empty)")
     nameservers = re.findall(r"^nameserver\s+(\S+)", resolv, flags=re.M)
     search = re.findall(r"^search\s+(.+)$", resolv, flags=re.M)
-    lines.append(f"nameserver sayısı: {len(nameservers)} → {', '.join(nameservers) or '-'}")
+    lines.append(f"nameserver count: {len(nameservers)} → {', '.join(nameservers) or '-'}")
     if search:
         lines.append(f"search: {search[0].strip()}")
 
@@ -109,12 +109,12 @@ def collect_dns_config() -> list[str]:
                     )
                 ):
                     keep.append(line.rstrip())
-            lines.append("--- resolvectl (özet) ---")
+            lines.append("--- resolvectl (summary) ---")
             lines.extend(keep[:40] if keep else out.splitlines()[:25])
     elif shutil.which("systemd-resolve"):
         rc, out, _ = run("systemd-resolve --status", timeout=5)
         if rc == 0 and out:
-            lines.append("--- systemd-resolve (ilk satırlar) ---")
+            lines.append("--- systemd-resolve (first lines) ---")
             lines.extend(out.splitlines()[:30])
 
     # nsswitch hosts line
@@ -183,13 +183,13 @@ def resolve_one(host: str, timeout: float = 3.0) -> dict[str, Any]:
 
 
 def collect_dns_tests(hosts: list[str]) -> tuple[list[str], dict[str, Any]]:
-    lines = section("DNS çözümleme testleri")
+    lines = section("DNS resolution tests")
     stats = {"ok": 0, "fail": 0, "results": []}
     if not hosts:
-        lines.append("(test host listesi boş)")
+        lines.append("(test host list is empty)")
         return lines, stats
 
-    lines.append(f"{'SONUÇ':<6}  {'ms':>6}  {'HOST':<40}  ADRESLER / HATA")
+    lines.append(f"{'RESULT':<6}  {'ms':>6}  {'HOST':<40}  ADDRESSES / ERROR")
     lines.append("-" * 100)
     with ThreadPoolExecutor(max_workers=min(8, len(hosts))) as ex:
         futs = {ex.submit(resolve_one, h): h for h in hosts}
@@ -212,7 +212,7 @@ def collect_dns_tests(hosts: list[str]) -> tuple[list[str], dict[str, Any]]:
             lines.append(
                 f"{'FAIL':<6}  {r['ms'] or 0:>6}  {h:<40}  {r['error']}"
             )
-    lines.append(f"DNS özet: ok={stats['ok']} fail={stats['fail']} toplam={len(hosts)}")
+    lines.append(f"DNS summary: ok={stats['ok']} fail={stats['fail']} total={len(hosts)}")
     return lines, stats
 
 
@@ -241,10 +241,10 @@ def ping_one(target: str, count: int = 2) -> dict[str, Any]:
 
 
 def collect_ping_tests(targets: list[str]) -> tuple[list[str], dict[str, Any]]:
-    lines = section("ICMP ping testleri")
-    lines.append("Not: Birçok bulut/firewall ICMP'yi keser; FAIL tek başına internet yok demek değildir.")
+    lines = section("ICMP ping tests")
+    lines.append("Note: Many clouds/firewalls drop ICMP; FAIL alone does not mean there is no internet.")
     stats = {"ok": 0, "fail": 0}
-    lines.append(f"{'SONUÇ':<6}  {'ms':>6}  {'LOSS':>6}  HEDEF")
+    lines.append(f"{'RESULT':<6}  {'ms':>6}  {'LOSS':>6}  TARGET")
     lines.append("-" * 60)
     for t in targets:
         r = ping_one(t)
@@ -258,7 +258,7 @@ def collect_ping_tests(targets: list[str]) -> tuple[list[str], dict[str, Any]]:
         else:
             stats["fail"] += 1
             lines.append(f"{'FAIL':<6}  {r['ms']:>6}  {'-':>6}  {t}  → {r['error']}")
-    lines.append(f"Ping özet: ok={stats['ok']} fail={stats['fail']}")
+    lines.append(f"Ping summary: ok={stats['ok']} fail={stats['fail']}")
     return lines, stats
 
 
@@ -305,7 +305,7 @@ def tcp_one(host: str, port: int, timeout: float = 3.0) -> dict[str, Any]:
 
 
 def collect_tcp_tests(targets: list[str]) -> tuple[list[str], dict[str, Any]]:
-    lines = section("TCP bağlantı testleri (host:port)")
+    lines = section("TCP connection tests (host:port)")
     stats = {"ok": 0, "fail": 0}
     parsed: list[tuple[str, int]] = []
     for t in targets:
@@ -315,8 +315,8 @@ def collect_tcp_tests(targets: list[str]) -> tuple[list[str], dict[str, Any]]:
         try:
             parsed.append((host, int(port_s)))
         except ValueError:
-            lines.append(f"Geçersiz hedef atlandı: {t}")
-    lines.append(f"{'SONUÇ':<6}  {'ms':>6}  {'HEDEF':<42}  PEER / HATA")
+            lines.append(f"Invalid target skipped: {t}")
+    lines.append(f"{'RESULT':<6}  {'ms':>6}  {'TARGET':<42}  PEER / ERROR")
     lines.append("-" * 100)
 
     results = []
@@ -338,7 +338,7 @@ def collect_tcp_tests(targets: list[str]) -> tuple[list[str], dict[str, Any]]:
             lines.append(
                 f"{'FAIL':<6}  {r['ms']:>6}  {key:<42}  {r['error']}"
             )
-    lines.append(f"TCP özet: ok={stats['ok']} fail={stats['fail']}")
+    lines.append(f"TCP summary: ok={stats['ok']} fail={stats['fail']}")
     return lines, stats
 
 
@@ -392,13 +392,13 @@ def http_one(url: str, timeout: float = 5.0, proxy: str | None = None) -> dict[s
 
 
 def collect_http_tests(urls: list[str]) -> tuple[list[str], dict[str, Any]]:
-    lines = section("HTTP/HTTPS erişim testleri")
+    lines = section("HTTP/HTTPS access tests")
     lines.append(
-        "Not: 401/403/404 bile 'ulaşıldı' sayılır (TLS+HTTP çalışıyor). "
-        "Sertifika/proxy hataları FAIL olur."
+        "Note: Even 401/403/404 count as 'reached' (TLS+HTTP works). "
+        "Certificate/proxy errors are FAIL."
     )
     stats = {"ok": 0, "fail": 0}
-    lines.append(f"{'SONUÇ':<6}  {'ms':>6}  {'CODE':>5}  URL / HATA")
+    lines.append(f"{'RESULT':<6}  {'ms':>6}  {'CODE':>5}  URL / ERROR")
     lines.append("-" * 100)
     results = []
     with ThreadPoolExecutor(max_workers=min(8, max(1, len(urls)))) as ex:
@@ -418,12 +418,12 @@ def collect_http_tests(urls: list[str]) -> tuple[list[str], dict[str, Any]]:
             lines.append(
                 f"{'FAIL':<6}  {r['ms']:>6}  {'-':>5}  {u}  → {r['error']}"
             )
-    lines.append(f"HTTP özet: ok={stats['ok']} fail={stats['fail']}")
+    lines.append(f"HTTP summary: ok={stats['ok']} fail={stats['fail']}")
     return lines, stats
 
 
 def collect_proxy() -> list[str]:
-    lines = section("Proxy / ortam değişkenleri")
+    lines = section("Proxy / environment variables")
     keys = [
         "http_proxy",
         "https_proxy",
@@ -441,7 +441,7 @@ def collect_proxy() -> list[str]:
             found = True
             lines.append(f"{k}={v}")
     if not found:
-        lines.append("Süreç ortamında proxy değişkeni yok.")
+        lines.append("No proxy variable in the process environment.")
 
     # apt proxy snippets
     apt_files = [
@@ -472,7 +472,7 @@ def collect_proxy() -> list[str]:
 
 
 def collect_gateway_ping() -> list[str]:
-    lines = section("Gateway erişimi")
+    lines = section("Gateway reachability")
     rc, out, _ = run("ip route show default")
     gw = None
     m = re.search(r"default via (\S+)", out)
@@ -485,11 +485,11 @@ def collect_gateway_ping() -> list[str]:
         else:
             lines.append(f"Gateway ping: FAIL → {r['error']}")
             lines.append(
-                "UYARI: Gateway'e ICMP yoksa bile TCP çalışabilir; "
-                "ama L2/L3 kopukluğu da olabilir."
+                "WARNING: Even without ICMP to the gateway, TCP may still work; "
+                "but an L2/L3 break is also possible."
             )
     else:
-        lines.append("Default gateway bulunamadı.")
+        lines.append("Default gateway not found.")
     return lines
 
 
@@ -510,32 +510,32 @@ def compute_profile(
     http_ratio = http_ok / max(http_ok + http_fail, 1)
 
     if http_ratio >= 0.7 and dns_ratio >= 0.7:
-        profile = "INTERNET_VAR"
+        profile = "INTERNET_AVAILABLE"
         detail = (
-            "DNS ve HTTPS büyük ölçüde çalışıyor — online kurulum / image pull genelde mümkün."
+            "DNS and HTTPS mostly work — online install / image pull is usually possible."
         )
     elif tcp_ratio >= 0.5 and dns_ratio < 0.5:
-        profile = "KISITLI_DNS_SORUNLU"
+        profile = "LIMITED_DNS_BROKEN"
         detail = (
-            "Bazı TCP hedeflerine gidiliyor ama DNS zayıf/kırık. "
-            "IP ile erişim veya dahili DNS düzeltmesi gerekir."
+            "Some TCP targets are reachable but DNS is weak/broken. "
+            "Access by IP or an internal DNS fix is required."
         )
     elif dns_ratio >= 0.7 and http_ratio < 0.3 and tcp_ratio < 0.3:
-        profile = "DNS_VAR_CIKIS_YOK"
+        profile = "DNS_OK_NO_EGRESS"
         detail = (
-            "İsim çözülüyor ama dış TCP/HTTPS yok — outbound firewall / proxy eksik olabilir."
+            "Names resolve but there is no external TCP/HTTPS — outbound firewall / proxy may be missing."
         )
     elif dns_ratio < 0.3 and tcp_ratio < 0.3 and http_ratio < 0.3:
-        profile = "INTERNET_YOK_VEYA_AIRGAP"
+        profile = "NO_INTERNET_OR_AIRGAP"
         detail = (
-            "DNS + dış TCP/HTTPS büyük ölçüde başarısız — air-gap / izole on-prem profili. "
-            "Offline paket/mirror ile kurulum planlanmalı."
+            "DNS + external TCP/HTTPS mostly failed — air-gap / isolated on-prem profile. "
+            "Plan installation via offline packages/mirrors."
         )
     else:
-        profile = "KISMI_ERISIM"
+        profile = "PARTIAL_ACCESS"
         detail = (
-            "Karışık sonuçlar — bazı registry/apt hedefleri açık, bazıları kapalı olabilir. "
-            "Aşağıdaki FAIL satırlarına göre mirror/proxy ayarla."
+            "Mixed results — some registry/apt targets may be open, others closed. "
+            "Configure a mirror/proxy based on the FAIL lines below."
         )
     return profile, detail, dns_ratio, tcp_ratio, http_ratio
 
@@ -665,25 +665,25 @@ def collect_speed_tests(
     http_stats: dict[str, Any],
     bytes_list: list[int],
 ) -> list[str]:
-    lines = section("İnternet hız testi (indirme + yükleme)")
+    lines = section("Internet speed test (download + upload)")
     if not enabled:
-        lines.append("Atlandı: net_speed_test=false")
+        lines.append("Skipped: net_speed_test=false")
         return lines
 
     http_ok = http_stats.get("ok", 0)
-    if profile in ("INTERNET_YOK_VEYA_AIRGAP", "DNS_VAR_CIKIS_YOK") or http_ok == 0:
+    if profile in ("NO_INTERNET_OR_AIRGAP", "DNS_OK_NO_EGRESS") or http_ok == 0:
         lines.append(
-            f"Atlandı: internet/HTTP yeterli değil (profil={profile}, http_ok={http_ok})."
+            f"Skipped: internet/HTTP is not sufficient (profile={profile}, http_ok={http_ok})."
         )
         return lines
 
     lines.append(
-        "Cloudflare speed endpoint: __down (indirme) + __up (yükleme). Yaklaşık ölçüm."
+        "Cloudflare speed endpoint: __down (download) + __up (upload). Approximate measurement."
     )
 
     # ----- Download -----
-    lines.append("--- İndirme (download) ---")
-    lines.append(f"{'SONUÇ':<6}  {'Mbps':>8}  {'MB':>8}  {'sn':>7}  BOYUT")
+    lines.append("--- Download ---")
+    lines.append(f"{'RESULT':<6}  {'Mbps':>8}  {'MB':>8}  {'sec':>7}  SIZE")
     lines.append("-" * 70)
     dl_results = []
     for n in bytes_list:
@@ -705,29 +705,29 @@ def collect_speed_tests(
         best_dl = dl_speeds[-1]
         avg_dl = sum(dl_speeds) / len(dl_speeds)
         lines.append(
-            f"İndirme özet: son={best_dl:.2f} Mbps | ort={avg_dl:.2f} Mbps "
-            f"({len(dl_speeds)}/{len(dl_results)} başarılı)"
+            f"Download summary: last={best_dl:.2f} Mbps | avg={avg_dl:.2f} Mbps "
+            f"({len(dl_speeds)}/{len(dl_results)} successful)"
         )
     else:
-        lines.append("İndirme ölçümü başarısız.")
+        lines.append("Download measurement failed.")
         fb = download_speed_one(
             "http://archive.ubuntu.com/ubuntu/ls-lR.gz", timeout=45.0
         )
         if fb["ok"] and fb["mbps"]:
             lines.append(
-                f"Yedek indirme (archive.ubuntu.com): {fb['mbps']:.2f} Mbps "
+                f"Fallback download (archive.ubuntu.com): {fb['mbps']:.2f} Mbps "
                 f"({fb['bytes']/1e6:.2f} MB / {fb['sec']:.2f}s)"
             )
             dl_speeds = [fb["mbps"]]
 
     # ----- Upload -----
     lines.append("")
-    lines.append("--- Yükleme (upload) ---")
-    lines.append(f"{'SONUÇ':<6}  {'Mbps':>8}  {'MB':>8}  {'sn':>7}  BOYUT")
+    lines.append("--- Upload ---")
+    lines.append(f"{'RESULT':<6}  {'Mbps':>8}  {'MB':>8}  {'sec':>7}  SIZE")
     lines.append("-" * 70)
     up_results = []
     up_url = "https://speed.cloudflare.com/__up"
-    # Upload için biraz daha küçük varsayılanlar da yeterli; verilen listeyi kullan
+    # Slightly smaller defaults are enough for upload; use the given list
     for n in bytes_list:
         r = upload_speed_one(up_url, n, timeout=90.0)
         up_results.append(r)
@@ -746,34 +746,34 @@ def collect_speed_tests(
         best_up = up_speeds[-1]
         avg_up = sum(up_speeds) / len(up_speeds)
         lines.append(
-            f"Yükleme özet: son={best_up:.2f} Mbps | ort={avg_up:.2f} Mbps "
-            f"({len(up_speeds)}/{len(up_results)} başarılı)"
+            f"Upload summary: last={best_up:.2f} Mbps | avg={avg_up:.2f} Mbps "
+            f"({len(up_speeds)}/{len(up_results)} successful)"
         )
     else:
         lines.append(
-            "Yükleme ölçümü başarısız (outbound POST engelli / proxy upload kesiyor olabilir)."
+            "Upload measurement failed (outbound POST blocked / proxy may be cutting uploads)."
         )
 
     lines.append("")
     if dl_speeds and up_speeds:
         lines.append(
-            f"Özet: ↓ download={dl_speeds[-1]:.2f} Mbps | ↑ upload={up_speeds[-1]:.2f} Mbps"
+            f"Summary: ↓ download={dl_speeds[-1]:.2f} Mbps | ↑ upload={up_speeds[-1]:.2f} Mbps"
         )
         d, u = dl_speeds[-1], up_speeds[-1]
         if d < 5 or u < 2:
             lines.append(
-                "Yorum: Düşük hız — büyük image pull / push ve apt uzun sürebilir."
+                "Note: Low speed — large image pull / push and apt may take a long time."
             )
         elif d < 25 or u < 10:
-            lines.append("Yorum: Orta hız — online kurulum mümkün, büyük transferlerde sabır.")
+            lines.append("Note: Medium speed — online install is possible; be patient on large transfers.")
         else:
-            lines.append("Yorum: İyi hız — online kurulum / registry pull-push için uygun.")
+            lines.append("Note: Good speed — suitable for online install / registry pull-push.")
     elif dl_speeds:
-        lines.append(f"Özet: ↓ download={dl_speeds[-1]:.2f} Mbps | ↑ upload=ölçülemedi")
+        lines.append(f"Summary: ↓ download={dl_speeds[-1]:.2f} Mbps | ↑ upload=could not be measured")
     elif up_speeds:
-        lines.append(f"Özet: ↓ download=ölçülemedi | ↑ upload={up_speeds[-1]:.2f} Mbps")
+        lines.append(f"Summary: ↓ download=could not be measured | ↑ upload={up_speeds[-1]:.2f} Mbps")
     else:
-        lines.append("Özet: hız ölçümü yapılamadı.")
+        lines.append("Summary: speed measurement could not be performed.")
 
     return lines
 
@@ -784,7 +784,7 @@ def verdict(
     http_stats: dict[str, Any],
     ping_stats: dict[str, Any],
 ) -> tuple[list[str], str]:
-    lines = section("GENEL SONUÇ (internet erişim profili)")
+    lines = section("OVERALL RESULT (internet access profile)")
     profile, detail, _dns_r, _tcp_r, _http_r = compute_profile(
         dns_stats, tcp_stats, http_stats
     )
@@ -795,27 +795,27 @@ def verdict(
     http_ok = http_stats.get("ok", 0)
     http_fail = http_stats.get("fail", 0)
 
-    lines.append(f"Profil: {profile}")
-    lines.append(f"Yorum: {detail}")
+    lines.append(f"Profile: {profile}")
+    lines.append(f"Note: {detail}")
     lines.append(
-        f"Skorlar: DNS {dns_ok}/{dns_ok + dns_fail} | "
+        f"Scores: DNS {dns_ok}/{dns_ok + dns_fail} | "
         f"TCP {tcp_ok}/{tcp_ok + tcp_fail} | "
         f"HTTP {http_ok}/{http_ok + http_fail} | "
         f"ICMP {ping_stats.get('ok', 0)}/{ping_stats.get('ok', 0) + ping_stats.get('fail', 0)}"
     )
     lines.append("")
-    lines.append("Kurulum ipucu:")
-    if profile == "INTERNET_VAR":
-        lines.append("- Standart online kurulum (apt, helm, image pull) denenebilir.")
-    elif profile == "INTERNET_YOK_VEYA_AIRGAP":
-        lines.append("- Offline bundle / iç mirror / bastion üzerinden kurulum.")
-        lines.append("- DNS bile yoksa /etc/hosts veya iç DNS şart.")
-    elif profile == "DNS_VAR_CIKIS_YOK":
-        lines.append("- Outbound 80/443 veya HTTP proxy iste; güvenlik duvarı kurallarını kontrol et.")
-    elif profile == "KISITLI_DNS_SORUNLU":
-        lines.append("- /etc/resolv.conf ve kurumsal DNS'i düzelt; gerekirse IP allow-list.")
+    lines.append("Install hint:")
+    if profile == "INTERNET_AVAILABLE":
+        lines.append("- Standard online install (apt, helm, image pull) can be attempted.")
+    elif profile == "NO_INTERNET_OR_AIRGAP":
+        lines.append("- Install via offline bundle / internal mirror / bastion.")
+        lines.append("- If even DNS is missing, /etc/hosts or internal DNS is required.")
+    elif profile == "DNS_OK_NO_EGRESS":
+        lines.append("- Request outbound 80/443 or an HTTP proxy; check firewall rules.")
+    elif profile == "LIMITED_DNS_BROKEN":
+        lines.append("- Fix /etc/resolv.conf and corporate DNS; use an IP allow-list if needed.")
     else:
-        lines.append("- FAIL olan registry/apt URL'leri için özel mirror veya proxy tanımla.")
+        lines.append("- Define a dedicated mirror or proxy for FAIL registry/apt URLs.")
     return lines, profile
 
 
@@ -861,7 +861,7 @@ def main() -> None:
     parser.add_argument(
         "--speed-test",
         default="true",
-        help="true/false — internet varken indirme hız testi",
+        help="true/false — download speed test when internet is available",
     )
     parser.add_argument(
         "--speed-bytes",
@@ -888,7 +888,7 @@ def main() -> None:
         speed_bytes = [1_000_000, 10_000_000]
 
     lines: list[str] = []
-    lines.append("Ağ / DNS / internet erişim raporu (salt-okunur)")
+    lines.append("Network / DNS / internet access report (read-only)")
     lines.extend(collect_interfaces())
     lines.extend(collect_routes())
     lines.extend(collect_gateway_ping())
@@ -911,7 +911,7 @@ def main() -> None:
     verdict_lines, _profile = verdict(dns_stats, tcp_stats, http_stats, ping_stats)
     lines.extend(verdict_lines)
     lines.append("")
-    lines.append("Detay: docs/19_check_network_connectivity.md")
+    lines.append("Details: docs/19_check_network_connectivity.md")
 
     print("\n".join(lines))
 

@@ -47,7 +47,7 @@ def main() -> int:
         namespaces = kubectl_json(["get", "namespaces"])
         pods = kubectl_json(["get", "pods", "--all-namespaces"])
     except (RuntimeError, json.JSONDecodeError) as exc:
-        print(f"[ERROR] Pod güvenlik kaynakları alınamadı: {exc}")
+        print(f"[ERROR] Pod security resources could not be retrieved: {exc}")
         return 2
 
     findings: list[tuple[str, str]] = []
@@ -59,7 +59,7 @@ def main() -> int:
     checked_namespaces = 0
     for namespace in namespaces.get("items", []):
         metadata = namespace.get("metadata", {})
-        name = metadata.get("name", "bilinmiyor")
+        name = metadata.get("name", "unknown")
         if name in excluded:
             continue
         checked_namespaces += 1
@@ -68,13 +68,13 @@ def main() -> int:
         audit = labels.get("pod-security.kubernetes.io/audit")
         warn = labels.get("pod-security.kubernetes.io/warn")
         if not enforce:
-            add("WARN", f"Namespace {name}: Pod Security enforce etiketi yok")
+            add("WARN", f"Namespace {name}: Pod Security enforce label missing")
         elif enforce == "privileged":
             add("WARN", f"Namespace {name}: enforce=privileged")
         if not audit:
-            add("INFO", f"Namespace {name}: Pod Security audit etiketi yok")
+            add("INFO", f"Namespace {name}: Pod Security audit label missing")
         if not warn:
-            add("INFO", f"Namespace {name}: Pod Security warn etiketi yok")
+            add("INFO", f"Namespace {name}: Pod Security warn label missing")
 
     checked_pods = 0
     checked_containers = 0
@@ -83,7 +83,7 @@ def main() -> int:
         namespace = metadata.get("namespace", "default")
         if namespace in excluded:
             continue
-        pod_name = metadata.get("name", "bilinmiyor")
+        pod_name = metadata.get("name", "unknown")
         prefix = f"{namespace}/{pod_name}"
         spec = pod.get("spec", {})
         pod_security = spec.get("securityContext", {})
@@ -109,7 +109,7 @@ def main() -> int:
         ):
             for container in containers:
                 checked_containers += 1
-                name = container.get("name", "bilinmiyor")
+                name = container.get("name", "unknown")
                 label = f"{prefix}/{container_kind}/{name}"
                 security = container.get("securityContext", {})
 
@@ -124,10 +124,10 @@ def main() -> int:
                     "runAsNonRoot", pod_security.get("runAsNonRoot")
                 )
                 if run_as_non_root is not True:
-                    add("WARN", f"{label}: runAsNonRoot=true değil")
+                    add("WARN", f"{label}: runAsNonRoot is not true")
 
                 if security.get("allowPrivilegeEscalation") is not False:
-                    add("WARN", f"{label}: allowPrivilegeEscalation=false değil")
+                    add("WARN", f"{label}: allowPrivilegeEscalation is not false")
 
                 added_caps = set(
                     security.get("capabilities", {}).get("add", []) or []
@@ -140,17 +140,17 @@ def main() -> int:
                     )
                     add(
                         level,
-                        f"{label}: ek Linux capability: {','.join(sorted(added_caps))}",
+                        f"{label}: extra Linux capability: {','.join(sorted(added_caps))}",
                     )
 
                 seccomp = security.get("seccompProfile") or pod_seccomp
                 if not seccomp:
-                    add("WARN", f"{label}: seccompProfile tanımlı değil")
+                    add("WARN", f"{label}: seccompProfile is not set")
                 elif seccomp.get("type") == "Unconfined":
                     add("CRITICAL", f"{label}: seccompProfile=Unconfined")
 
                 if security.get("readOnlyRootFilesystem") is not True:
-                    add("INFO", f"{label}: readOnlyRootFilesystem=true değil")
+                    add("INFO", f"{label}: readOnlyRootFilesystem is not true")
 
                 for port in container.get("ports", []):
                     if int(port.get("hostPort", 0) or 0) > 0:
@@ -159,27 +159,27 @@ def main() -> int:
                             f"{label}: hostPort={port.get('hostPort')}",
                         )
 
-    print("KUBERNETES POD GÜVENLİK DURUŞU RAPORU")
+    print("KUBERNETES POD SECURITY POSTURE REPORT")
     print("=" * 92)
-    print(f"İncelenen namespace : {checked_namespaces}")
-    print(f"İncelenen pod       : {checked_pods}")
-    print(f"İncelenen container : {checked_containers}")
-    print("Not: Bu rapor resmi admission evaluator yerine sezgisel bir ön kontroldür.")
+    print(f"Checked namespace : {checked_namespaces}")
+    print(f"Checked pod       : {checked_pods}")
+    print(f"Checked container : {checked_containers}")
+    print("Note: This report is a heuristic pre-check, not the official admission evaluator.")
     print("-" * 92)
     for level, message in findings:
         print(f"[{level}] {message}")
     if not findings:
-        print("[OK] Tanımlı politika kapsamında güvenlik bulgusu yok")
+        print("[OK] No security findings under the configured policy")
     if len(findings) >= args.max_findings:
-        print(f"[WARN] Çıktı {args.max_findings} bulgu ile sınırlandı")
+        print(f"[WARN] Output limited to {args.max_findings} findings")
     counts = {
         level: sum(1 for finding_level, _ in findings if finding_level == level)
         for level in ("CRITICAL", "WARN", "INFO")
     }
     print("-" * 92)
     print(
-        f"Özet: {counts['CRITICAL']} kritik, {counts['WARN']} uyarı, "
-        f"{counts['INFO']} bilgi"
+        f"Summary: {counts['CRITICAL']} critical, {counts['WARN']} warning(s), "
+        f"{counts['INFO']} info"
     )
     return 0
 

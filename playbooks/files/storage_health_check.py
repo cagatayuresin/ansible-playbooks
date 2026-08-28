@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Salt-okunur: disk/inode + container runtime + PV/PVC storage report."""
+"""Read-only: disk/inode + container runtime + PV/PVC storage report."""
 from __future__ import annotations
 
 import json
@@ -26,28 +26,28 @@ def section(title: str) -> list[str]:
 
 
 def collect_df() -> list[str]:
-    lines = section("Dosya sistemleri (df -hT)")
+    lines = section("Filesystems (df -hT)")
     rc, out, err = run(
         "df -hT -x tmpfs -x devtmpfs -x squashfs -x overlay -x efivarfs"
     )
-    lines.append(out if rc == 0 else (err or "df başarısız"))
+    lines.append(out if rc == 0 else (err or "df failed"))
     return lines
 
 
 def collect_inodes() -> list[str]:
-    lines = section("Inode kullanımı (df -i)")
+    lines = section("Inode usage (df -i)")
     rc, out, err = run(
         "df -iT -x tmpfs -x devtmpfs -x squashfs -x overlay -x efivarfs"
     )
-    lines.append(out if rc == 0 else (err or "df -i başarısız"))
+    lines.append(out if rc == 0 else (err or "df -i failed"))
     lines.append(
-        "Yorum: IUse% yüksekse (özellikle >80) küçük dosya yağmuru / container layer birikimi şüphesi."
+        "Note: High IUse% (especially >80) suggests many small files / container layer buildup."
     )
     return lines
 
 
 def collect_runtime_disk() -> list[str]:
-    lines = section("Container runtime disk kullanımı")
+    lines = section("Container runtime disk usage")
     if shutil.which("crictl"):
         rc, out, err = run("crictl info -o json")
         if rc == 0 and out:
@@ -79,19 +79,19 @@ def collect_runtime_disk() -> list[str]:
             except Exception as e:
                 lines.append(f"crictl info parse: {e}")
         else:
-            lines.append(f"crictl info yok: {err}")
+            lines.append(f"crictl info missing: {err}")
         rc, out, _ = run("crictl images -v 2>/dev/null | tail -5")
         # disk via images summary
         rc2, out2, _ = run(
             "crictl images -o json | python3 -c "
             "\"import sys,json; d=json.load(sys.stdin); "
             "s=sum(int(i.get('size') or 0) for i in d.get('images') or []); "
-            "print(f'crictl images toplam boyut: {s/1e9:.2f} GB ({len(d.get(\\\"images\\\") or [])} imaj)')\""
+            "print(f'crictl images total size: {s/1e9:.2f} GB ({len(d.get(\\\"images\\\") or [])} images)')\""
         )
         if rc2 == 0 and out2:
             lines.append(out2)
     else:
-        lines.append("crictl yok.")
+        lines.append("crictl missing.")
 
     if shutil.which("docker"):
         rc, out, _ = run("docker system df")
@@ -105,7 +105,7 @@ def collect_pv_pvc() -> list[str]:
     lines = section("Kubernetes PV / PVC")
     rc, _, err = run("kubectl cluster-info")
     if rc != 0:
-        lines.append(f"kubectl yok/erişilemez — PV/PVC atlandı ({err or '-'}).")
+        lines.append(f"kubectl missing/unreachable — PV/PVC skipped ({err or '-'}).")
         return lines
 
     for kind, title in (
@@ -118,37 +118,37 @@ def collect_pv_pvc() -> list[str]:
         if rc == 0 and out:
             lines.append(out)
         else:
-            lines.append(err or f"{kind} alınamadı")
+            lines.append(err or f"{kind} could not be retrieved")
 
     # Pending / Lost highlights
     rc, out, _ = run(
         "kubectl get pvc -A --no-headers 2>/dev/null | "
         "awk '$3!=\"Bound\" {print}'"
     )
-    lines.append("--- Bound olmayan PVC'ler ---")
-    lines.append(out if out else "(yok — hepsi Bound veya PVC yok)")
+    lines.append("--- Non-Bound PVCs ---")
+    lines.append(out if out else "(none — all Bound or no PVCs)")
 
     rc, out, _ = run(
         "kubectl get pv --no-headers 2>/dev/null | "
         "awk '$5!=\"Bound\" && $5!=\"Available\" {print}'"
     )
-    lines.append("--- Sorunlu/Released PV'ler (Bound/Available dışı) ---")
-    lines.append(out if out else "(yok veya tümü Bound/Available)")
+    lines.append("--- Problem/Released PVs (not Bound/Available) ---")
+    lines.append(out if out else "(none or all Bound/Available)")
     return lines
 
 
 def main() -> None:
     lines: list[str] = []
-    lines.append("Depolama / inode / PV raporu (salt-okunur)")
+    lines.append("Storage / inode / PV report (read-only)")
     lines.extend(collect_df())
     lines.extend(collect_inodes())
     lines.extend(collect_runtime_disk())
     lines.extend(collect_pv_pvc())
     lines.append("")
     lines.append(
-        "Yorum: Disk doluluğu + yüksek inode + büyük crictl images → 17/18 playbook'ları."
+        "Note: Disk full + high inodes + large crictl images → playbooks 17/18."
     )
-    lines.append("Detay: docs/23_check_storage_health.md")
+    lines.append("Details: docs/23_check_storage_health.md")
     print("\n".join(lines))
 
 

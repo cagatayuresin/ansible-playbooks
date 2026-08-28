@@ -1,59 +1,60 @@
 ---
+lang: en
 title: "22 · check_k8s_warning_events"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 22
 ---
 
-# 22_check_k8s_warning_events.yml - Kullanım Kılavuzu
+# 22_check_k8s_warning_events.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
 
-## Amaç
+## Purpose
 
-İlk control-plane üzerinden cluster’daki **Warning** tipindeki Kubernetes event’lerini toplar:
+Collects Kubernetes events of type **Warning** in the cluster from the first control-plane:
 
-- Son N saat (varsayılan 24)
-- Reason frekansı
-- Namespace dağılımı
-- Son event satırları (zaman, count, kind/name, message)
+- Last N hours (default 24)
+- Reason frequency
+- Namespace distribution
+- Recent event lines (time, count, kind/name, message)
 
-Salt-okunur.
+Read-only.
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `events_since_hours` | `24` | Ne kadar geriye bakılsın |
-| `events_limit` | `80` | Listelenecek max event |
-| `events_namespace` | `""` (boş) | Doluysa sadece o namespace; boşsa tüm namespace’ler |
+| `events_since_hours` | `24` | How far back to look |
+| `events_limit` | `80` | Max events to list |
+| `events_namespace` | `""` (empty) | If set, only that namespace; if empty, all namespaces |
 
 ```bash
-# Tüm namespace'ler
+# All namespaces
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/22_check_k8s_warning_events.yml \
   --extra-vars 'events_since_hours=48 events_limit=120'
 
-# Sadece bir namespace
+# A single namespace
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/22_check_k8s_warning_events.yml \
   --extra-vars 'events_namespace=n8n'
 ```
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/22_check_k8s_warning_events.yml
 ```
 
-## Yorumlama
+## Interpretation
 
-| Reason (ör.) | Ne bakmalı |
+| Reason (e.g.) | What to check |
 |---|---|
-| `FailedScheduling` | Kaynak / taint / affinity |
+| `FailedScheduling` | Resources / taint / affinity |
 | `FailedMount` / `FailedAttachVolume` | PV/storage → 23 |
 | `ImagePullBackOff` / `ErrImagePull` | Registry / image → 17, 19 |
-| `OOMKilled` / `BackOff` | Limit / bellek → 10, 15 |
-| `Unhealthy` | Probe / uygulama sağlığı → 01 |
+| `OOMKilled` / `BackOff` | Limit / memory → 10, 15 |
+| `Unhealthy` | Probe / application health → 01 |
 
-## Notlar
+## Notes
 
 - Script: `playbooks/files/k8s_warning_events_check.py`
-- Event’ler etcd’de tutulur ve zamanla silinir; “son 24s boş” her zaman sorun yok demektir.
+- Events are stored in etcd and expire over time; “empty for the last 24h” does not always mean there is no problem.

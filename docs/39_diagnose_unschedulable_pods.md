@@ -1,33 +1,34 @@
 ---
+lang: en
 title: "39 · diagnose_unschedulable_pods"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 39
 ---
 
-# 39_diagnose_unschedulable_pods.yml - Kullanım Kılavuzu
+# 39_diagnose_unschedulable_pods.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Kubernetes](https://img.shields.io/badge/Kubernetes-Pod_Diagnostics-326CE5?style=flat)
 
-## Amaç
+## Purpose
 
-Pending veya başlatılamayan pod'lar için scheduler condition, container waiting reason, PVC ve son event verilerini birleştirir. Aşağıdaki durumları açıklar:
+Combines scheduler conditions, container waiting reasons, PVCs, and recent events for Pending or pods that cannot start. Explains:
 
 - `Unschedulable`
-- Yetersiz CPU/RAM, taint, affinity ve node selector sorunları
-- Bound olmayan PVC
+- Insufficient CPU/RAM, taint, affinity, and node selector issues
+- Unbound PVCs
 - `ErrImagePull` / `ImagePullBackOff`
 - `CrashLoopBackOff`
-- Container config/image adı hataları
+- Container config/image name errors
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `pod_diagnostics_excluded_namespaces` | boş | Hariç tutulacak namespace listesi |
-| `pod_diagnostics_max_pods` | `100` | Raporlanacak maksimum pod |
-| `pod_diagnostics_events_per_pod` | `5` | Pod başına son event sayısı |
+| `pod_diagnostics_excluded_namespaces` | empty | Namespace list to exclude |
+| `pod_diagnostics_max_pods` | `100` | Maximum pods to report |
+| `pod_diagnostics_events_per_pod` | `5` | Recent events per pod |
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/39_diagnose_unschedulable_pods.yml

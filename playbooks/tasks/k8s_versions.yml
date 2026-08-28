@@ -1,12 +1,12 @@
 ---
-- name: Kubeconfig / kubectl erişim kontrolü
+- name: Kubeconfig / kubectl access check
   command: kubectl cluster-info
   register: kubectl_check
   ignore_errors: true
   changed_when: false
   check_mode: false
 
-- name: "Kubernetes client/server sürümü (Çalışma Şartı: kubectl erişimi olmalı)"
+- name: "Kubernetes client/server version (When: kubectl access is required)"
   command: kubectl version --output=yaml
   register: kubectl_version
   when: kubectl_check.rc == 0
@@ -14,35 +14,35 @@
   ignore_errors: true
   check_mode: false
 
-- name: kubeadm sürümü
+- name: kubeadm version
   command: kubeadm version -o short
   register: kubeadm_version
   ignore_errors: true
   changed_when: false
   check_mode: false
 
-- name: kubelet sürümü
+- name: kubelet version
   command: kubelet --version
   register: kubelet_version
   ignore_errors: true
   changed_when: false
   check_mode: false
 
-- name: containerd sürümü
+- name: containerd version
   command: containerd --version
   register: containerd_version
   ignore_errors: true
   changed_when: false
   check_mode: false
 
-- name: runc sürümü
+- name: runc version
   command: runc --version
   register: runc_version
   ignore_errors: true
   changed_when: false
   check_mode: false
 
-- name: "etcd image/sürüm bilgisi (Çalışma Şartı: kubectl erişimi olmalı)"
+- name: "etcd image/version info (When: kubectl access is required)"
   command: kubectl get pods -n kube-system -l component=etcd -o jsonpath={.items[0].spec.containers[0].image}
   register: etcd_version
   when: kubectl_check.rc == 0

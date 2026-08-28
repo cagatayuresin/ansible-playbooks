@@ -1,50 +1,51 @@
 ---
+lang: en
 title: "05 · check_k8s_services"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 5
 ---
 
-# 05_check_k8s_services.yml - Kullanım Kılavuzu
+# 05_check_k8s_services.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
 
-## Amaç
+## Purpose
 
-Bu playbook, sistemde bulunan Kubernetes/container ile ilgili tüm systemd servislerini **dinamik olarak** keşfedip (sabit bir liste değil, `kube|containerd|calico|etcd|runc` desenine göre arama) her birinin aktif/enabled durumunu ve son 10 satır logunu raporlar.
+This playbook **dynamically** discovers systemd services related to Kubernetes/containers (not a hardcoded list; it matches the `kube|containerd|calico|etcd|runc` pattern) and reports each service's active/enabled state plus the last 10 log lines.
 
-## Gereksinimler
+## Requirements
 
-- `hosts: all` — her node'da çalışır.
-- Servis keşfi Ansible'ın yerleşik `service_facts` modülüyle yapılır, ek bir collection gerekmez.
-- `journalctl` çıktısı okunabilmesi için ilgili kullanıcının journal loglarına erişimi olmalıdır.
+- `hosts: all` — runs on every node.
+- Service discovery uses Ansible's built-in `service_facts` module; no extra collection is required.
+- The user must be able to read journal logs so `journalctl` output is available.
 
-## Çalıştırma Komutu
+## How to run
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/05_check_k8s_services.yml
 
-# Belirli bir host/grup ile sınırlamak için:
+# Limit to a host or group:
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/05_check_k8s_services.yml --limit worker1
 ```
 
-## Örnek Çıktı
+## Sample output
 
 ```text
-TASK [Ping pong] ***************************************************************
+TASK [Ping connectivity test] **************************************************
 ok: [203.0.113.10]
 
-TASK [Servis durum raporu - aktif/enabled (Çalışma Şartı: ilgili servis bulunmalı)] ***
-ok: [203.0.113.10] => (item=containerd.service) => {"msg": "containerd.service -> durum: running, açılışta aktif: enabled"}
-ok: [203.0.113.10] => (item=kubelet.service) => {"msg": "kubelet.service -> durum: running, açılışta aktif: enabled"}
+TASK [Service status report - active/enabled (when: matching services must exist)] ***
+ok: [203.0.113.10] => (item=containerd.service) => {"msg": "containerd.service -> state: running, enabled at boot: enabled"}
+ok: [203.0.113.10] => (item=kubelet.service) => {"msg": "kubelet.service -> state: running, enabled at boot: enabled"}
 
-TASK [Servis log raporu (Çalışma Şartı: log kaydı alınabilmeli)] ***************
+TASK [Service log report (when: logs must be readable)] ************************
 ok: [203.0.113.10] => (item=kubelet.service) => {
-    "msg": "===== kubelet.service son loglar =====\n... (son 10 satır) ..."
+    "msg": "===== kubelet.service recent logs =====\n... (last 10 lines) ..."
 }
 ```
 
-## Notlar
+## Notes
 
-- Servis listesi tamamen dinamiktir: `service_facts` ile sistemdeki tüm servisler taranır, yalnızca isim deseni eşleşenler (`kube`, `containerd`, `calico`, `etcd`, `runc`) rapora dahil edilir. Docker bu desenin dışındadır.
-- Log satır sayısı 10 ile sınırlıdır — çok sayıda servis/host için çalıştırıldığında çıktının okunabilir kalması amaçlanıyor.
-- `.get('state', ...)` / `.get('status', ...)` kullanılmıştır çünkü bazı servis girdileri `service_facts` çıktısında eksik alanlarla gelebiliyor.
+- The service list is fully dynamic: `service_facts` scans all services on the system and only names matching `kube`, `containerd`, `calico`, `etcd`, or `runc` are included. Docker is outside this pattern.
+- Log output is capped at 10 lines so the report stays readable when many services/hosts are involved.
+- `.get('state', ...)` / `.get('status', ...)` are used because some service entries in `service_facts` can omit those fields.

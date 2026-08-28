@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes Service ve EndpointSlice Sağlık Kontrolü
+- name: Kubernetes Service and EndpointSlice Health Check
   hosts: "{{ ((groups.get('master', []) + groups.get('singlenode', [])) | join(',')) | default('all', true) }}"
   gather_facts: false
   environment:
@@ -16,11 +16,11 @@
     service_endpoints_max_findings: 300
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Service ve EndpointSlice analizini çalıştır
+    - name: Run Service and EndpointSlice analysis
       script: >-
         files/k8s_service_endpoints_check.py
         --exclude-namespaces {{ service_endpoints_excluded_namespaces | quote }}
@@ -30,7 +30,7 @@
       failed_when: service_endpoints_result.rc != 0
       when: inventory_hostname == first_control_plane
 
-    - name: Service ve EndpointSlice sağlık raporu
+    - name: Service and EndpointSlice health report
       debug:
-        msg: "{{ service_endpoints_result.stdout | default(service_endpoints_result.stderr | default('Rapor üretilemedi')) }}"
+        msg: "{{ service_endpoints_result.stdout | default(service_endpoints_result.stderr | default('Failed to generate report')) }}"
       when: inventory_hostname == first_control_plane

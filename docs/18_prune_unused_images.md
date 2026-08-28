@@ -1,74 +1,75 @@
 ---
+lang: en
 title: "18 · prune_unused_images"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 18
 ---
 
-# 18_prune_unused_images.yml - Kullanım Kılavuzu
+# 18_prune_unused_images.yml - Usage Guide
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![Docker](https://img.shields.io/badge/Runtime-Docker-2496ED?style=flat&logo=docker&logoColor=white)
 
-## Amaç
+## Purpose
 
-[17_check_container_images](17_check_container_images.md) ile aynı mantıkta `IN_USE=no` olan imajları:
+Using the same logic as [17_check_container_images](17_check_container_images.md), for images with `IN_USE=no`:
 
-1. **Varsayılan:** sadece **aday listesi** olarak gösterir (silmez)
-2. **Onaylı:** `docker rmi` / `crictl rmi` ile host’tan siler
+1. **Default:** only shows them as a **candidate list** (does not delete)
+2. **Confirmed:** deletes them from the host with `docker rmi` / `crictl rmi`
 
-⚠️ Cluster’ı / host diskini değiştirir (onay verilirse). Yanlışlıkla silinen imaj bir sonraki pod schedule’da yeniden pull edilir (registry erişimi + süre/maliyet).
+⚠️ Changes the cluster / host disk (if confirmed). An image deleted by mistake will be pulled again on the next pod schedule (registry access + time/cost).
 
-## Host kapsamı (önemli)
+## Host scope (important)
 
-Kullanımda olmayan imajlar **yalnızca playbook’un çalıştığı host(lar)ın kendi diskinde** listelenir / silinir.
+Unused images are listed / deleted **only on the disk of the host(s) the playbook runs on**.
 
-- Her node’un containerd/Docker imaj deposu **ayrıdır**.
-- Sadece `master` / `singlenode` üzerinde çalıştırmak **worker disklerine dokunmaz**.
-- Çok nodeli cluster’da tüm node’ları temizlemek için inventory’de worker’lar da olmalı ve playbook `hosts: all` ile (veya `--limit workers` / ilgili gruplarla) **her hedef hostta** çalışmalı.
-- Master’dan “cluster geneli tek komutla herkesin diski” temizlenmez; Ansible her hosta ayrı bağlanıp o hosttaki `IN_USE=no` imajları işler.
+- Each node's containerd/Docker image store is **separate**.
+- Running only on `master` / `singlenode` **does not touch worker disks**.
+- To clean every node in a multi-node cluster, workers must be in inventory and the playbook must run **on each target host** with `hosts: all` (or `--limit workers` / the relevant groups).
+- There is no “one command from master that cleans everyone's disk”; Ansible connects to each host separately and processes `IN_USE=no` images on that host.
 
-Ortak script/task: `files/container_images_inventory.py`, `tasks/container_images_inventory.yml`
+Shared script/task: `files/container_images_inventory.py`, `tasks/container_images_inventory.yml`
 
-## Güvenlik kilidi
+## Safety lock
 
-| `image_prune_confirm` | Davranış |
+| `image_prune_confirm` | Behavior |
 |---|---|
-| `false` (varsayılan) | Sadece kullanılmayan adayları listeler |
-| `true` | Adayları siler |
+| `false` (default) | Lists unused candidates only |
+| `true` | Deletes the candidates |
 
-## Çalıştırma
+## How to run
 
 ```bash
-# 1) Önce adayları gör (silmez):
+# 1) See candidates first (does not delete):
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/18_prune_unused_images.yml
 
-# 2) Gerçekten sil:
+# 2) Actually delete:
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/18_prune_unused_images.yml \
   --extra-vars 'image_prune_confirm=true'
 
-# Belirli host:
+# Specific host:
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/18_prune_unused_images.yml \
   --limit worker1 --extra-vars 'image_prune_confirm=true'
 ```
 
-## Ne silinir / ne silinmez?
+## What is deleted / what is not?
 
-- **Silinir:** Bu host’ta hiçbir container’ın (çalışan veya durmuş) referans etmediği imajlar — 17’deki `IN_USE=no`.
-- **Silinmez:** `IN_USE=yes` (çalışan veya exited container hâlâ tutuyorsa).
-- Bazı silmeler **HATA** ile bitebilir (paylaşılan katman, “image is in use”, aynı anda başka referans); rapor satırında görünür, playbook fail olmaz.
-- `DeadlineExceeded` / `RST_STREAM` / `CANCEL` genelde containerd’ye giden geçici RPC timeout’udur (imaj hâlâ “kullanımda” demek değildir). Script bu durumda birkaç kez yeniden dener; yine olursa 18’i tekrar çalıştırmak yeterli.
+- **Deleted:** Images that no container on this host (running or stopped) references — `IN_USE=no` in 17.
+- **Not deleted:** `IN_USE=yes` (a running or exited container still holds it).
+- Some deletes can end with **ERROR** (shared layer, “image is in use”, another reference at the same time); it shows on the report line and the playbook does not fail.
+- `DeadlineExceeded` / `RST_STREAM` / `CANCEL` are usually a transient RPC timeout to containerd (it does not mean the image is still “in use”). The script retries a few times; if it still happens, re-running 18 is enough.
 
-## 17 ile ilişki
+## Relationship to 17
 
-| Playbook | Ne yapar |
+| Playbook | What it does |
 |---|---|
-| 17 | Tam envanter (kullanımda + değil) |
-| 18 (confirm=false) | Sadece kullanılmayan adaylar |
-| 18 (confirm=true) | Adayları sil + sonuç |
+| 17 | Full inventory (in use + unused) |
+| 18 (confirm=false) | Unused candidates only |
+| 18 (confirm=true) | Delete candidates + result |
 
-Öneri: önce 17 veya 18’i onaysız çalıştır, listeye bak, sonra confirm=true.
+Recommendation: run 17 or 18 without confirm first, review the list, then confirm=true.
 
-## Notlar
+## Notes
 
-- Host-local temizliktir; başka node’daki aynı imajı etkilemez. Kullanımda olmayanlar = **sadece playbook’un çalıştığı host’taki** `IN_USE=no` imajlar.
-- k3s/containerd’de çok birikmiş digest-only imajlar (eski CI tag’leri) genelde burada temizlenir.
-- `become: true` gerekir.
+- This is host-local cleanup; it does not affect the same image on another node. Unused = `IN_USE=no` images **only on the host the playbook ran on**.
+- On k3s/containerd, accumulated digest-only images (old CI tags) are usually cleaned here.
+- `become: true` is required.

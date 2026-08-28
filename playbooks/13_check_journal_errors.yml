@@ -1,19 +1,19 @@
 ---
-- name: Journalctl Kernel ve Hata Logları Raporu
+- name: Journalctl kernel and error log report
   hosts: all
   gather_facts: true
 
   vars:
-    # --extra-vars ile değiştirilebilir: journal_since="6 hours ago" journal_lines=120
+    # Overridable via --extra-vars: journal_since="6 hours ago" journal_lines=120
     journal_since: "24 hours ago"
     journal_lines: 80
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Kernel logları (err ve üzeri)
+    - name: Kernel logs (err and above)
       become: true
       command:
         argv:
@@ -32,7 +32,7 @@
       ignore_errors: true
       check_mode: false
 
-    - name: Kernel logları (warning)
+    - name: Kernel logs (warning)
       become: true
       command:
         argv:
@@ -51,7 +51,7 @@
       ignore_errors: true
       check_mode: false
 
-    - name: Sistem genel hata logları (err ve üzeri, tüm unit'ler)
+    - name: System-wide error logs (err and above, all units)
       become: true
       command:
         argv:
@@ -69,7 +69,7 @@
       ignore_errors: true
       check_mode: false
 
-    - name: Bu boot'taki kernel hataları (err ve üzeri)
+    - name: Kernel errors on this boot (err and above)
       become: true
       command:
         argv:
@@ -87,37 +87,37 @@
       ignore_errors: true
       check_mode: false
 
-    - name: Journal hata / kernel log raporu
+    - name: Journal error / kernel log report
       vars:
         _host_banner: |
           ################################################################################
           # HOST: {{ inventory_hostname }}
           # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-          # aralık: {{ journal_since }} | satır limiti/bölüm: {{ journal_lines }}
+          # window: {{ journal_since }} | line limit/section: {{ journal_lines }}
           ################################################################################
         _k_err: "{{ journal_kernel_err.stdout | default(journal_kernel_err.stderr | default('')) | trim }}"
         _k_warn: "{{ journal_kernel_warn.stdout | default(journal_kernel_warn.stderr | default('')) | trim }}"
         _s_err: "{{ journal_system_err.stdout | default(journal_system_err.stderr | default('')) | trim }}"
         _b_err: "{{ journal_boot_kernel_err.stdout | default(journal_boot_kernel_err.stderr | default('')) | trim }}"
-        _empty: "-- Bu aralıkta / bu öncelikte kayıt yok --"
+        _empty: "-- No records in this window / at this priority --"
       debug:
         msg:
           - "{{ _host_banner }}"
           - |
             === Kernel ERR+ ({{ journal_since }}) ===
-            Yorum: OOM, I/O error, firmware, NMI, disk/NVMe, ağ sürücü hataları. Boşsa iyi işaret.
+            Note: OOM, I/O error, firmware, NMI, disk/NVMe, network driver errors. Empty is a good sign.
             {{ _k_err if _k_err | length > 0 else _empty }}
           - |
             === Kernel WARNING ({{ journal_since }}) ===
-            Yorum: Henüz fatal değil ama bozulma habercisi olabilir (retry, throttling, deprecated).
+            Note: Not fatal yet, but may signal upcoming trouble (retry, throttling, deprecated).
             {{ _k_warn if _k_warn | length > 0 else _empty }}
           - |
-            === Sistem ERR+ tüm unit'ler ({{ journal_since }}) ===
-            Yorum: Servis çökmesi, auth fail, unit failure. Kernel dışı sorunlar burada görünür.
+            === System ERR+ all units ({{ journal_since }}) ===
+            Note: Service crashes, auth fail, unit failure. Non-kernel issues show up here.
             {{ _s_err if _s_err | length > 0 else _empty }}
           - |
-            === Bu boot kernel ERR+ ===
-            Yorum: Son yeniden açılıştan beri kernel hataları (since filtresinden bağımsız).
+            === This boot kernel ERR+ ===
+            Note: Kernel errors since last reboot (independent of the since filter).
             {{ _b_err if _b_err | length > 0 else _empty }}
           - |
-            Detaylı yorum: docs/13_check_journal_errors.md
+            Detailed notes: docs/13_check_journal_errors.md

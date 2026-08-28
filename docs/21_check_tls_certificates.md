@@ -1,58 +1,59 @@
 ---
+lang: en
 title: "21 · check_tls_certificates"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 21
 ---
 
-# 21_check_tls_certificates.yml - Kullanım Kılavuzu
+# 21_check_tls_certificates.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
 
-## Amaç
+## Purpose
 
-Salt-okunur TLS / sertifika envanteri (ilk control-plane üzerinde):
+Read-only TLS / certificate inventory (on the first control-plane):
 
-1. **kubeadm** `certs check-expiration` (varsa)
-2. **Control-plane PEM dosyaları** — `/etc/kubernetes/pki`, `/var/lib/rancher/k3s/server/tls` (openssl bitiş + kalan gün)
-3. **Ingress TLS** — her Ingress için domain’ler, secret, issuer, SAN, bitiş tarihi, kalan gün, seviye
-4. **cert-manager** `Certificate` kaynakları (CRD varsa)
-5. **Tüm `kubernetes.io/tls` secret’ları** — en kritik 25 (kalan güne göre)
+1. **kubeadm** `certs check-expiration` (if present)
+2. **Control-plane PEM files** — `/etc/kubernetes/pki`, `/var/lib/rancher/k3s/server/tls` (openssl expiry + days remaining)
+3. **Ingress TLS** — for each Ingress: domains, secret, issuer, SAN, expiry date, days remaining, level
+4. **cert-manager** `Certificate` resources (if the CRD exists)
+5. **All `kubernetes.io/tls` secrets** — the most critical 25 (by days remaining)
 
-## Seviyeler
+## Levels
 
-| Seviye | Kalan gün |
+| Level | Days remaining |
 |---|---|
-| `SURESI_DOLMUS` | < 0 |
-| `KRITIK` | ≤ 7 |
-| `UYARI` | ≤ 30 |
-| `YAKLASIYOR` | ≤ 90 |
+| `EXPIRED` | < 0 |
+| `CRITICAL` | ≤ 7 |
+| `WARNING` | ≤ 30 |
+| `APPROACHING` | ≤ 90 |
 | `OK` | > 90 |
 
-## Gereksinimler
+## Requirements
 
-- `hosts: master:singlenode` — yalnızca `first_control_plane`
-- `become: true` (PKI dizinleri genelde root)
+- `hosts: master:singlenode` — `first_control_plane` only
+- `become: true` (PKI directories are usually root)
 - `kubectl` + `openssl` + `python3`
-- `KUBECONFIG` play seviyesinde `~/.kube/config`
+- `KUBECONFIG` at play level is `~/.kube/config`
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/21_check_tls_certificates.yml
 ```
 
-## Ingress çıktısı nasıl okunur?
+## How to read Ingress output
 
-Her kayıtta:
+Each record has:
 
 - **domains** — Ingress rule / TLS hosts
 - **secret** — `namespace/secretName`
-- **issuer / SAN** — sertifika kimliği
-- **KALAN / BITIS / SEVIYE** — yenileme aciliyeti
+- **issuer / SAN** — certificate identity
+- **REMAINING / EXPIRY / LEVEL** — renewal urgency
 
-`TLS_YOK` / `SECRET_EKSIK` / `CERT_YOK` → yapılandırma eksik, süre değil.
+`NO_TLS` / `SECRET_MISSING` / `NO_CERT` → missing configuration, not expiry.
 
-## Notlar
+## Notes
 
 - Script: `playbooks/files/k8s_tls_certificates_check.py`
-- Cluster’ı değiştirmez.
+- Does not change the cluster.

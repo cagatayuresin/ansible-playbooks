@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes Workload Dayanıklılık Kontrolü
+- name: Kubernetes Workload Resilience Check
   hosts: master:singlenode
   gather_facts: false
   environment:
@@ -11,11 +11,11 @@
     workload_resilience_max_findings: 300
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Workload dayanıklılık analizini çalıştır
+    - name: Run workload resilience analysis
       script: >-
         files/k8s_workload_resilience_check.py
         --exclude-namespaces {{ workload_resilience_excluded_namespaces | quote }}
@@ -25,7 +25,7 @@
       failed_when: false
       when: inventory_hostname == first_control_plane
 
-    - name: Workload dayanıklılık raporu
+    - name: Workload resilience report
       debug:
-        msg: "{{ workload_resilience_result.stdout | default(workload_resilience_result.stderr | default('Rapor üretilemedi')) }}"
+        msg: "{{ workload_resilience_result.stdout | default(workload_resilience_result.stderr | default('Failed to generate report')) }}"
       when: inventory_hostname == first_control_plane

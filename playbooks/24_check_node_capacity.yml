@@ -1,5 +1,5 @@
 ---
-- name: Node Conditions ve Capacity Raporu
+- name: Node conditions and capacity report
   hosts: master:singlenode
   gather_facts: true
   environment:
@@ -9,11 +9,11 @@
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Node capacity raporunu üret
+    - name: Generate node capacity report
       script: k8s_node_capacity_check.py
       args:
         executable: python3
@@ -23,7 +23,7 @@
       check_mode: false
       when: inventory_hostname == first_control_plane
 
-    - name: Node conditions / capacity raporu
+    - name: Node conditions / capacity report
       debug:
         msg:
           - |
@@ -31,5 +31,5 @@
             # HOST: {{ inventory_hostname }}
             # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
             ################################################################################
-          - "{{ capacity_report.stdout | default(capacity_report.stderr | default('Rapor üretilemedi')) }}"
+          - "{{ capacity_report.stdout | default(capacity_report.stderr | default('Report could not be generated')) }}"
       when: inventory_hostname == first_control_plane

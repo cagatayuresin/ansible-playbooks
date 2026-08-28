@@ -1,23 +1,23 @@
 ---
-# Host üzerindeki container imaj envanteri / prune.
+# Container image inventory / prune on the host.
 # Play vars: image_inventory_mode = report | unused | prune
-# Üretir: image_inventory (stdout rapor)
+# Produces: image_inventory (stdout report)
 
-- name: Docker var mı
+- name: Is Docker present
   command: which docker
   register: docker_bin
   ignore_errors: true
   changed_when: false
   check_mode: false
 
-- name: crictl var mı
+- name: Is crictl present
   command: which crictl
   register: crictl_bin
   ignore_errors: true
   changed_when: false
   check_mode: false
 
-- name: "Container imaj envanteri / prune (Çalışma Şartı: docker veya crictl olmalı)"
+- name: "Container image inventory / prune (When: docker or crictl is required)"
   become: true
   script: "container_images_inventory.py --mode {{ image_inventory_mode | default('report') }}"
   args:
@@ -28,7 +28,7 @@
   check_mode: false
   when: docker_bin.rc == 0 or crictl_bin.rc == 0
 
-- name: Container imaj envanteri / prune raporu
+- name: Container image inventory / prune report
   debug:
     msg:
       - |
@@ -44,8 +44,8 @@
             + (['crictl/containerd'] if crictl_bin.rc == 0 else [])
           ) | join(' + ')
           if (docker_bin.rc == 0 or crictl_bin.rc == 0)
-          else 'yok'
+          else 'none'
         }}
-      - "{{ image_inventory.stdout | default(image_inventory.stderr | default('Rapor üretilemedi')) if image_inventory is defined else 'docker/crictl yok — atlandı' }}"
+      - "{{ image_inventory.stdout | default(image_inventory.stderr | default('Report could not be generated')) if image_inventory is defined else 'docker/crictl missing — skipped' }}"
       - |
-        Detay: docs/17_check_container_images.md / docs/18_prune_unused_images.md
+        Details: docs/17_check_container_images.md / docs/18_prune_unused_images.md

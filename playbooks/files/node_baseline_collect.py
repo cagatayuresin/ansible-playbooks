@@ -29,14 +29,14 @@ def run(command: list[str]) -> str:
 
 def file_hash(path: Path) -> str:
     if not path.is_file():
-        return "yok"
+        return "missing"
     digest = hashlib.sha256()
     try:
         with path.open("rb") as stream:
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 digest.update(chunk)
     except OSError:
-        return "okunamadı"
+        return "unreadable"
     return digest.hexdigest()[:16]
 
 
@@ -44,7 +44,7 @@ def read_value(path: Path) -> str:
     try:
         return path.read_text(errors="replace").strip()
     except OSError:
-        return "okunamadı"
+        return "unreadable"
 
 
 def os_release() -> dict[str, str]:
@@ -65,7 +65,7 @@ def active_time_service() -> str:
         for service in services
         if run(["systemctl", "is-active", service]) == "active"
     ]
-    return ",".join(active) if active else "yok"
+    return ",".join(active) if active else "none"
 
 
 def find_containerd_config() -> Path | None:
@@ -89,8 +89,8 @@ def main() -> int:
 
     data = {
         "hostname": platform.node(),
-        "os_id": release.get("ID", "bilinmiyor"),
-        "os_version": release.get("VERSION_ID", "bilinmiyor"),
+        "os_id": release.get("ID", "unknown"),
+        "os_version": release.get("VERSION_ID", "unknown"),
         "kernel": platform.release(),
         "architecture": platform.machine(),
         "cgroup_version": (
@@ -103,17 +103,17 @@ def main() -> int:
         ),
         "br_netfilter_loaded": "br_netfilter " in modules,
         "overlay_loaded": "overlay " in modules,
-        "containerd_version": run(["containerd", "--version"]) or "yok",
+        "containerd_version": run(["containerd", "--version"]) or "missing",
         "containerd_config_sha256": (
-            file_hash(containerd_config) if containerd_config else "yok"
+            file_hash(containerd_config) if containerd_config else "missing"
         ),
         "containerd_systemd_cgroup": bool(
             re.search(r"SystemdCgroup\s*=\s*true", containerd_text)
         ),
-        "kubelet_version": run(["kubelet", "--version"]) or "yok",
+        "kubelet_version": run(["kubelet", "--version"]) or "missing",
         "kubelet_config_sha256": file_hash(kubelet_config),
         "kubelet_cgroup_driver": (
-            cgroup_match.group(1) if cgroup_match else "bilinmiyor"
+            cgroup_match.group(1) if cgroup_match else "unknown"
         ),
         "time_sync_service": active_time_service(),
         "reboot_required": Path("/var/run/reboot-required").exists(),

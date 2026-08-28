@@ -1,11 +1,12 @@
 ---
-title: Kurulum
+lang: en
+title: Installation
 nav_order: 2
 ---
 
-# Kurulum
+# Installation
 
-Bu depodaki playbook'ları çalıştırmak için Ansible'ın kurulu olduğu bir kontrol makinesi gerekir. Ansible control node **yalnızca Linux/macOS/WSL üzerinde** çalışır — Windows'ta doğrudan çalışmaz (yönetilen/hedef makine Windows olabilir ama kontrol makinesi olamaz).
+Running the playbooks in this repository requires a control machine with Ansible installed. The Ansible control node runs **only on Linux/macOS/WSL** — it does not run natively on Windows (managed/target hosts can be Windows, but the control node cannot).
 
 ## Linux (Ubuntu/Debian)
 
@@ -13,13 +14,13 @@ Bu depodaki playbook'ları çalıştırmak için Ansible'ın kurulu olduğu bir 
 sudo apt update
 sudo apt install -y ansible sshpass
 
-# Daha güncel bir sürüm isterseniz pip ile:
+# For a more recent version via pip:
 python3 -m pip install --user ansible
 ```
 
-`sshpass`, inventory'de `ansible_ssh_pass` ile **şifre ile SSH** bağlanırken gerekir. SSH anahtarı kullanıyorsanız zorunlu değildir; bu depodaki örnek inventory'ler şifre kullandığı için kurulum önerilir.
+`sshpass` is required when connecting with **password SSH** via `ansible_ssh_pass` in inventory. It is optional if you use SSH keys; the sample inventories in this repo use passwords, so installing it is recommended.
 
-Doğrulama:
+Verify:
 
 ```bash
 ansible --version
@@ -28,22 +29,22 @@ sshpass -V
 
 ## macOS
 
-[Homebrew](https://brew.sh) ile:
+With [Homebrew](https://brew.sh):
 
 ```bash
 brew install ansible
 brew install hudochenkov/sshpass/sshpass
 ```
 
-Homebrew yoksa önce onu kurun:
+If Homebrew is not installed, install it first:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-`sshpass`, inventory'de `ansible_ssh_pass` ile **şifre ile SSH** bağlanırken gerekir. SSH anahtarı kullanıyorsanız zorunlu değildir.
+`sshpass` is required when connecting with **password SSH** via `ansible_ssh_pass` in inventory. It is optional if you use SSH keys.
 
-Doğrulama:
+Verify:
 
 ```bash
 ansible --version
@@ -52,43 +53,43 @@ sshpass -V
 
 ## Windows
 
-Ansible control node Windows'ta native çalışmaz. İki seçenek:
+The Ansible control node does not run natively on Windows. Two options:
 
-### Seçenek 1: WSL2 (önerilen)
+### Option 1: WSL2 (recommended)
 
-1. PowerShell'i **yönetici olarak** açıp:
+1. Open PowerShell **as administrator** and run:
    ```powershell
    wsl --install
    ```
-2. Bilgisayarı yeniden başlatın, Ubuntu kurulumunu tamamlayın (kullanıcı adı/şifre sorar).
-3. Açılan WSL2 Ubuntu terminalinde, yukarıdaki **Linux (Ubuntu/Debian)** adımlarını izleyin (`ansible` + `sshpass`).
-4. Bu repoyu WSL2 dosya sistemi içine (`~/` altına) klonlayın — Windows tarafındaki `/mnt/c/...` üzerinden çalıştırmak SSH/performans sorunlarına yol açabilir.
+2. Reboot the machine and finish the Ubuntu setup (it will prompt for a username/password).
+3. In the WSL2 Ubuntu terminal, follow the **Linux (Ubuntu/Debian)** steps above (`ansible` + `sshpass`).
+4. Clone this repo into the WSL2 filesystem (under `~/`) — running from the Windows side via `/mnt/c/...` can cause SSH and performance issues.
 
-### Seçenek 2: Uzak bir Linux makine / VM üzerinden
+### Option 2: A remote Linux machine / VM
 
-Ansible'ı doğrudan bir Linux sunucusunda veya VM'de (VirtualBox, Hyper-V, bulut sağlayıcı vb.) kurup playbook'ları oradan çalıştırın; Windows makineniz sadece SSH ile o makineye bağlanmak için kullanılır.
+Install Ansible on a Linux server or VM (VirtualBox, Hyper-V, a cloud provider, and so on) and run the playbooks from there; your Windows machine is used only to SSH into that host.
 
-## Kurulumdan Sonra
+## After installation
 
-1. Bu repoyu klonlayın:
+1. Clone this repository:
    ```bash
    git clone <repo-url>
    cd ansible-playbooks
    ```
-2. Örnek inventory'yi gerçek ortam dizinine kopyalayın:
+2. Copy the sample inventory into a real-environment directory:
    ```bash
    mkdir -p inventories/musteri_a
    cp inventories-example/musteri_a/hosts.ini inventories/musteri_a/hosts.ini
    ```
-3. `inventories/musteri_a/hosts.ini` içindeki örnek host/IP/kimlik bilgilerini kendi ortamınıza göre düzenleyin. SSH varsayılan 22 dışında bir port kullanıyorsa `ansible_port=1993` gibi ekleyin.
-4. Inventory'yi doğrulayıp ilk playbook'u çalıştırın:
+3. Edit the sample host/IP/credentials in `inventories/musteri_a/hosts.ini` for your environment. If SSH uses a port other than the default 22, add something like `ansible_port=1993`.
+4. Validate the inventory and run the first playbook:
    ```bash
    ansible-inventory -i inventories/musteri_a/hosts.ini --graph
    ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/01_check_pod_health.yml
    ```
 
-Gerçek müşteri/production ortam inventory'leri bilinçli olarak `.gitignore` ile bu repodan hariç tutulmuştur.
+Real customer/production inventories are intentionally excluded from this repository via `.gitignore`.
 
-## Playbook Dokümantasyonu
+## Playbook documentation
 
-Her playbook'un amacı, gereksinimleri ve örnek çıktısı `docs/` klasöründe numaraya göre eşleşen dosyada anlatılır (ör. `playbooks/04_check_k8s_versions.yml` → `docs/04_check_k8s_versions.md`). Tam liste için [README.md](../README.md) içindeki tabloya bakın.
+Each playbook's purpose, requirements, and sample output are described in a matching numbered file under `docs/` (for example `playbooks/04_check_k8s_versions.yml` → `docs/04_check_k8s_versions.md`). See the table in [README.md](../README.md) for the full list.

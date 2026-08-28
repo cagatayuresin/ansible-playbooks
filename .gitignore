@@ -20,19 +20,19 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Claude Code oturum durumu (yerel, repoya ait değil)
+# Claude Code session state (local, not part of the repo)
 .claude/
 
-# Bütün inventory'ler (gerçek veriler) ignore ediliyor. Örnekler inventories-example/ klasöründedir.
+# All inventories (real data) are ignored. Examples live in inventories-example/.
 inventories/
 
-# Özel playbooklar ve k8s script dizini
+# Private playbooks and k8s script directory
 detay-playbooks/
 k8s-deployment-script-main/
 
-# Multipass test dosyaları
+# Multipass test files
 setup_multipass.sh
 inventory_multipass.ini
 
-# Yerel support bundle çıktıları hassas sistem bilgisi içerebilir
+# Local support bundle output may contain sensitive system information
 support-bundles/

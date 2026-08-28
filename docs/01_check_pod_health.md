@@ -1,44 +1,45 @@
 ---
+lang: en
 title: "01 · check_pod_health"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 1
 ---
 
-# 01_check_pod_health.yml - Kullanım Kılavuzu
+# 01_check_pod_health.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
 
-## Amaç
+## Purpose
 
-Bu playbook, Kubernetes cluster'ınızdaki (genellikle `master` veya `singlenode` üzerinde çalıştırılarak) tüm namespace'lerde bulunan pod'ların mevcut durumlarını ve sağlıklarını (sağlıklı çalışıp çalışmadığını, yeniden başlama sayısını, çalıştığı node'u vb.) döndürür.
+This playbook reports the current status and health of pods in all namespaces of your Kubernetes cluster (typically run on `master` or `singlenode`): whether they are healthy, restart counts, the node they run on, and so on.
 
-## Gereksinimler
+## Requirements
 
-- Hedef sunucuda (master veya singlenode) `kubectl` kurulu ve konfigüre edilmiş olmalıdır.
-- Ansible inventory'nizde `[master]` veya `[singlenode]` grubu tanımlanmış olmalıdır.
-- Playbook, non-interactive SSH'te `.bashrc` yüklenmediği için (özellikle k3s) `KUBECONFIG` yolunu `~/.kube/config` olarak açıkça set eder. Klasik kubeadm kurulumlarında da aynı varsayılan yol kullanılır.
+- `kubectl` must be installed and configured on the target host (master or singlenode).
+- Your Ansible inventory must define a `[master]` or `[singlenode]` group.
+- The playbook explicitly sets `KUBECONFIG` to `~/.kube/config` because `.bashrc` is not loaded in non-interactive SSH (especially on k3s). Classic kubeadm installs use the same default path.
 
-Playbook artık pod bilgisi almadan önce `kubectl cluster-info` ile bir erişim ön kontrolü yapar. `kubectl` erişimi yoksa (KUBECONFIG eksik/yanlış veya cluster'a ulaşılamıyor) anlamlı bir uyarı mesajı basılır ve pod sorgusu atlanır.
+The playbook now runs a `kubectl cluster-info` access check before collecting pod data. If `kubectl` is unavailable (missing/wrong KUBECONFIG or the cluster is unreachable), a clear warning is printed and the pod query is skipped.
 
-## Çalıştırma Komutu
+## How to run
 
 ```bash
-# Müşteri A için çalıştırma
+# Run for customer A
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/01_check_pod_health.yml
 
-# Müşteri B için çalıştırma
+# Run for customer B
 ansible-playbook -i inventories/musteri_b/hosts.ini playbooks/01_check_pod_health.yml
 ```
 
-## Örnek Çıktı
+## Sample output
 
-Komut çalıştırıldığında, öncelikle "Ping pong" adımıyla bağlantı testi yapılır. Başarılı ise `kubectl get pods -A -o wide` çıktısı ekrana yazdırılır:
+When the command runs, a ping connectivity test runs first. If it succeeds, the output of `kubectl get pods -A -o wide` is printed:
 
 ```text
-TASK [Ping pong] ***************************************************************
+TASK [Ping connectivity test] **************************************************
 ok: [192.168.1.10]
 
-TASK [Kubeconfig / kubectl erişim kontrolü] *************************************
+TASK [Check kubeconfig / kubectl access] ***************************************
 ok: [192.168.1.10]
 
 TASK [Get all pods in all namespaces with wide output] *************************

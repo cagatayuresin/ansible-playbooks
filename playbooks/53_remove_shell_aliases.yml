@@ -1,0 +1,26 @@
+---
+- name: Bulk-Remove Ansible Alias Packs
+  hosts: all
+  gather_facts: false
+
+  vars:
+    shell_aliases_state: absent
+    shell_aliases_pack: all
+    shell_aliases_target_user: "{{ ansible_user }}"
+    shell_aliases_remove_all_confirm: false
+
+  pre_tasks:
+    - name: Ping connectivity test
+      import_tasks: tasks/ping_pong.yml
+
+    - name: Bulk removal confirmation warning
+      debug:
+        msg: >-
+          shell_aliases_remove_all_confirm=false → only list installed alias packs.
+          To delete all: --extra-vars 'shell_aliases_remove_all_confirm=true'
+      when: not (shell_aliases_remove_all_confirm | bool)
+      run_once: true
+
+  tasks:
+    - name: List or remove alias packs
+      import_tasks: tasks/shell_aliases.yml

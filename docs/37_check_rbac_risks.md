@@ -1,37 +1,38 @@
 ---
+lang: en
 title: "37 · check_rbac_risks"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 37
 ---
 
-# 37_check_rbac_risks.yml - Kullanım Kılavuzu
+# 37_check_rbac_risks.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Security](https://img.shields.io/badge/Security-RBAC-7C3AED?style=flat)
 
-## Amaç
+## Purpose
 
-RBAC kaynaklarında yüksek riskli yetkileri raporlar:
+Reports high-risk permissions in RBAC resources:
 
-- `cluster-admin` binding'leri
-- `system:masters`, `system:unauthenticated` ve geniş authenticated binding'leri
-- Wildcard verb/resource kuralları
+- `cluster-admin` bindings
+- `system:masters`, `system:unauthenticated`, and broad authenticated bindings
+- Wildcard verb/resource rules
 - `bind`, `escalate`, `impersonate`
-- Secret, pod exec/attach ve service account token yetkileri
-- Varsayılan ServiceAccount token automount durumu
+- Secret, pod exec/attach, and service account token permissions
+- Default ServiceAccount token automount state
 
-`system:` ile başlayan Kubernetes yerleşik ClusterRole kuralları rol analizi sırasında atlanır; binding'leri yine raporlanır.
+Built-in Kubernetes ClusterRole rules that start with `system:` are skipped during role analysis; their bindings are still reported.
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `rbac_risks_excluded_namespaces` | `kube-system,kube-public,kube-node-lease` | Namespace kapsamlı analiz istisnaları |
-| `rbac_risks_max_findings` | `400` | Maksimum bulgu |
+| `rbac_risks_excluded_namespaces` | `kube-system,kube-public,kube-node-lease` | Exceptions for namespace-scoped analysis |
+| `rbac_risks_max_findings` | `400` | Maximum findings |
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/37_check_rbac_risks.yml
 ```
 
-Resmi referans: [Kubernetes RBAC good practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/)
+Official reference: [Kubernetes RBAC good practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/)

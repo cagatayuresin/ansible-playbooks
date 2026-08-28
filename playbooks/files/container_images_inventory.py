@@ -143,7 +143,7 @@ def collect_docker():
             f"{flag:<6}  {str(created)[:24]:<24}  {str(size):<10}  {name}  ({sid})"
         )
     lines.append(
-        f"Özet: toplam={len(rows)} kullanımda={in_use_n} kullanılmıyor={unused_n}"
+        f"Summary: total={len(rows)} in_use={in_use_n} unused={unused_n}"
     )
     lines.append("")
     return lines, unused_refs
@@ -161,7 +161,7 @@ def collect_crictl():
         try:
             images = json.loads(img_out).get("images") or []
         except Exception as e:
-            lines.append(f"crictl images parse hatası: {e}")
+            lines.append(f"crictl images parse error: {e}")
 
     used_refs = set()
     used_ids = set()
@@ -181,7 +181,7 @@ def collect_crictl():
                     used_ids.add(ref.replace("sha256:", ""))
                     used_ids.add(short_id(ref))
         except Exception as e:
-            lines.append(f"crictl ps parse hatası: {e}")
+            lines.append(f"crictl ps parse error: {e}")
 
     age_by_digest = {}
     if shutil.which("ctr"):
@@ -271,17 +271,17 @@ def collect_crictl():
             f"{flag:<6}  {str(created)[:24]:<24}  {str(size):<10}  {name}  ({sid})"
         )
     lines.append(
-        f"Özet: toplam={len(rows)} kullanımda={in_use_n} kullanılmıyor={unused_n}"
+        f"Summary: total={len(rows)} in_use={in_use_n} unused={unused_n}"
     )
     lines.append("")
     lines.append(
-        "Yorum: IN_USE=yes → bu host'ta container (çalışan veya durmuş) bu imajı kullanıyor."
+        "Note: IN_USE=yes → a container on this host (running or stopped) uses this image."
     )
     lines.append(
-        "       IN_USE=no → prune adayı (başka node sonra pull edebilir; dikkatli silin)."
+        "       IN_USE=no → prune candidate (another node may pull it later; delete carefully)."
     )
     lines.append(
-        "       CREATED_AT/AGE → Docker'da mutlak tarih; containerd'de genelde content AGE."
+        "       CREATED_AT/AGE → absolute date on Docker; usually content AGE on containerd."
     )
     return lines, unused_refs
 
@@ -289,7 +289,7 @@ def collect_crictl():
 def prune_docker(unused_refs):
     lines = ["=== Docker prune ==="]
     if not unused_refs:
-        lines.append("Silinecek kullanılmayan Docker imajı yok.")
+        lines.append("No unused Docker image to delete.")
         return lines
     ok = fail = 0
     # Deduplicate by ref
@@ -305,13 +305,13 @@ def prune_docker(unused_refs):
             rc, out, err = run("docker rmi " + ref)
         if rc == 0:
             ok += 1
-            lines.append(f"SİLİNDİ: {item['label']} ({ref}) size={item['size']}")
+            lines.append(f"DELETED: {item['label']} ({ref}) size={item['size']}")
         else:
             fail += 1
             msg = (err or out or "").strip().splitlines()
-            msg = msg[-1] if msg else "bilinmeyen hata"
-            lines.append(f"HATA: {item['label']} ({ref}) → {msg}")
-    lines.append(f"Docker prune özeti: silinen={ok} hata={fail}")
+            msg = msg[-1] if msg else "unknown error"
+            lines.append(f"ERROR: {item['label']} ({ref}) → {msg}")
+    lines.append(f"Docker prune summary: deleted={ok} error={fail}")
     lines.append("")
     return lines
 
@@ -319,7 +319,7 @@ def prune_docker(unused_refs):
 def prune_crictl(unused_refs, retries=3, delay_sec=2):
     lines = ["=== crictl/containerd prune ==="]
     if not unused_refs:
-        lines.append("Silinecek kullanılmayan crictl imajı yok.")
+        lines.append("No unused crictl image to delete.")
         return lines
     ok = fail = 0
     seen = set()
@@ -335,13 +335,13 @@ def prune_crictl(unused_refs, retries=3, delay_sec=2):
             if rc == 0:
                 ok += 1
                 deleted = True
-                extra = f" (deneme {attempt})" if attempt > 1 else ""
+                extra = f" (attempt {attempt})" if attempt > 1 else ""
                 lines.append(
-                    f"SİLİNDİ{extra}: {item['label']} ({ref}) size={item['size']}"
+                    f"DELETED{extra}: {item['label']} ({ref}) size={item['size']}"
                 )
                 break
             last_msg = (err or out or "").strip().splitlines()
-            last_msg = last_msg[-1] if last_msg else "bilinmeyen hata"
+            last_msg = last_msg[-1] if last_msg else "unknown error"
             transient = any(
                 x in last_msg
                 for x in (
@@ -359,8 +359,8 @@ def prune_crictl(unused_refs, retries=3, delay_sec=2):
             break
         if not deleted:
             fail += 1
-            lines.append(f"HATA: {item['label']} ({ref}) → {last_msg}")
-    lines.append(f"crictl prune özeti: silinen={ok} hata={fail}")
+            lines.append(f"ERROR: {item['label']} ({ref}) → {last_msg}")
+    lines.append(f"crictl prune summary: deleted={ok} error={fail}")
     lines.append("")
     return lines
 
@@ -371,7 +371,7 @@ def main():
         "--mode",
         choices=("report", "unused", "prune"),
         default="report",
-        help="report=tam envanter, unused=sadece adaylar, prune=sil",
+        help="report=full inventory, unused=candidates only, prune=delete",
     )
     args = parser.parse_args()
 
@@ -386,13 +386,13 @@ def main():
         if args.mode == "report":
             lines.extend(d_lines)
         elif args.mode in ("unused", "prune"):
-            lines.append("=== Docker — kullanılmayan (IN_USE=no) ===")
+            lines.append("=== Docker — unused (IN_USE=no) ===")
             if not docker_unused:
-                lines.append("(yok)")
+                lines.append("(none)")
             else:
                 for u in docker_unused:
                     lines.append(f"- {u['label']}  size={u['size']}  ref={u['ref']}")
-            lines.append(f"Aday sayısı: {len(docker_unused)}")
+            lines.append(f"Candidate count: {len(docker_unused)}")
             lines.append("")
 
     if shutil.which("crictl"):
@@ -401,32 +401,32 @@ def main():
         if args.mode == "report":
             lines.extend(c_lines)
         elif args.mode in ("unused", "prune"):
-            lines.append("=== crictl — kullanılmayan (IN_USE=no) ===")
+            lines.append("=== crictl — unused (IN_USE=no) ===")
             if not crictl_unused:
-                lines.append("(yok)")
+                lines.append("(none)")
             else:
                 for u in crictl_unused:
                     lines.append(f"- {u['label']}  size={u['size']}  ref={u['ref']}")
-            lines.append(f"Aday sayısı: {len(crictl_unused)}")
+            lines.append(f"Candidate count: {len(crictl_unused)}")
             lines.append("")
 
     if not any_rt:
         lines.append(
-            "Bu host'ta docker ve crictl bulunamadı; imaj envanteri alınamadı."
+            "docker and crictl were not found on this host; image inventory could not be retrieved."
         )
 
     if args.mode == "prune":
-        lines.append("=== SİLME BAŞLIYOR ===")
+        lines.append("=== DELETION STARTING ===")
         if shutil.which("docker"):
             lines.extend(prune_docker(docker_unused))
         if shutil.which("crictl"):
             lines.extend(prune_crictl(crictl_unused))
         lines.append(
-            "Not: Bazı imajlar paylaşılan katman / son referans yüzünden silinemeyebilir."
+            "Note: Some images may not delete due to shared layers / last remaining reference."
         )
     elif args.mode == "unused":
         lines.append(
-            "Silmek için: playbooks/18_prune_unused_images.yml "
+            "To delete: playbooks/18_prune_unused_images.yml "
             "--extra-vars 'image_prune_confirm=true'"
         )
 

@@ -1,25 +1,28 @@
 ---
+lang: en
 title: "28 · check_network_policies"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 28
 ---
 
-# 28_check_network_policies.yml - Kullanım Kılavuzu
+# 28_check_network_policies.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
 
-## Amaç
+## Purpose
 
-Namespace bazında **NetworkPolicy** envanteri:
+Per-namespace **NetworkPolicy** inventory:
 
-- Hangi ns’te policy var / yok (yok ≈ default-allow, CNI’ye bağlı)
-- Her policy: policyTypes, podSelector, ingress/egress kural sayısı (boş liste = deny-all)
+- Which namespaces have / do not have a policy (none ≈ default-allow, depends on the CNI)
+- Per policy: policyTypes, podSelector, ingress/egress rule counts (empty list = deny-all)
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `netpol_namespace` | `""` | Doluysa sadece o ns |
+| `netpol_namespace` | `""` | If set, only that ns |
+
+## How to run
 
 ```bash
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/28_check_network_policies.yml

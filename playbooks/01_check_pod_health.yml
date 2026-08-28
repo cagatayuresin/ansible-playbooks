@@ -6,19 +6,19 @@
     KUBECONFIG: "{{ '/root/.kube/config' if ansible_user == 'root' else '/home/' ~ ansible_user ~ '/.kube/config' }}"
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Kubeconfig / kubectl erişim kontrolü
+    - name: Check kubeconfig / kubectl access
       command: kubectl cluster-info
       register: kubectl_check
       ignore_errors: true
       changed_when: false
 
-    - name: Kubectl erişilemedi uyarısı
+    - name: Warn that kubectl is unreachable
       debug:
-        msg: "kubectl erişimi sağlanamadı (KUBECONFIG eksik/yanlış ya da cluster'a erişilemiyor)."
+        msg: "kubectl access failed (KUBECONFIG missing/wrong or cluster unreachable)."
       when: kubectl_check.rc != 0
 
     - name: Get all pods in all namespaces with wide output

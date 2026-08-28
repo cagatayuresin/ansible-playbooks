@@ -1,5 +1,5 @@
 ---
-- name: Sunucu Zamanı ve Saat Dilimi Ön Raporu
+- name: Server time and timezone pre-report
   import_playbook: 08_check_server_time.yml
 
 - name: Set Server Timezone to Europe/Istanbul
@@ -7,13 +7,13 @@
   gather_facts: false
 
   tasks:
-    - name: Zaman dilimini Europe/Istanbul olarak ayarla
+    - name: Set timezone to Europe/Istanbul
       become: true
       community.general.timezone:
         name: Europe/Istanbul
       register: timezone_set
 
-    - name: Zaman dilimi ayarlama sonucu
+    - name: Timezone change result
       debug:
         msg:
           - |
@@ -21,9 +21,9 @@
             # HOST: {{ inventory_hostname }}
             # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
             ################################################################################
-          - "Timezone {{ 'Europe/Istanbul olarak değiştirildi' if timezone_set.changed else 'zaten Europe/Istanbul idi, değişiklik yapılmadı' }}"
+          - "Timezone {{ 'changed to Europe/Istanbul' if timezone_set.changed else 'already Europe/Istanbul, no change' }}"
 
-    - name: "Zaman senkronizasyon servislerini aktif ve kalıcı hale getir (Çalışma Şartı: 08'de bir zaman servisi bulunmuş olmalı)"
+    - name: "Start and enable time sync services (When: play 08 found a time service)"
       become: true
       ansible.builtin.systemd:
         name: "{{ item }}"
@@ -35,24 +35,24 @@
       register: time_service_enable
       when: time_services is defined and time_services | length > 0
 
-    - name: "Zaman servisi bulunamadı, aktifleştirme atlanıyor (Çalışma Şartı: 08'de hiç zaman servisi bulunmamalı)"
+    - name: "No time service found, skip enable (When: play 08 found no time service)"
       debug:
-        msg: "08_check_server_time.yml çalışırken bilinen bir zaman senkronizasyon servisi (chrony/systemd-timesyncd/ntpd) bulunamadığı için aktifleştirme adımı atlandı."
+        msg: "No known time sync service (chrony/systemd-timesyncd/ntpd) was found while 08_check_server_time.yml ran, so the enable step was skipped."
       when: time_services is not defined or time_services | length == 0
 
-    - name: Zaman senkronizasyon servisi aktifleştirme raporu
+    - name: Time sync service enable report
       debug:
-        msg: "{{ item.item }} -> {{ 'başlatıldı/enable edildi' if item.changed else 'zaten aktif ve enabled idi' }}"
+        msg: "{{ item.item }} -> {{ 'started/enabled' if item.changed else 'already active and enabled' }}"
       loop: "{{ time_service_enable.results | default([]) }}"
       loop_control:
         label: "{{ item.item }}"
 
-    - name: Güncel zaman ve saat dilimini doğrula
+    - name: Verify current time and timezone
       command: timedatectl
       register: server_time_after
       changed_when: false
 
-    - name: Doğrulama raporu
+    - name: Verification report
       debug:
         msg:
           - |

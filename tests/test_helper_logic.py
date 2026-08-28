@@ -245,7 +245,7 @@ class EndpointLogicTests(unittest.TestCase):
         ):
             result = endpoints.main()
         self.assertEqual(result, 0)
-        self.assertIn("[CRITICAL] default/api: EndpointSlice yok", output.getvalue())
+        self.assertIn("[CRITICAL] default/api: EndpointSlice missing", output.getvalue())
 
     def test_slice_with_null_endpoints_is_reported_without_crashing(self):
         services = {
@@ -279,7 +279,7 @@ class EndpointLogicTests(unittest.TestCase):
             result = endpoints.main()
         self.assertEqual(result, 0)
         self.assertIn(
-            "[CRITICAL] default/api: 0 endpoint var fakat hazır backend yok",
+            "[CRITICAL] default/api: 0 endpoints but no ready backend",
             output.getvalue(),
         )
 

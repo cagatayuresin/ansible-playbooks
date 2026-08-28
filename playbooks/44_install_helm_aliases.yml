@@ -1,0 +1,18 @@
+---
+- name: Install / Remove Helm Alias Pack
+  hosts: all
+  gather_facts: false
+
+  vars:
+    shell_aliases_state: present
+    shell_aliases_pack: helm
+    shell_aliases_src: files/shell-aliases/helm.sh
+    shell_aliases_target_user: "{{ ansible_user }}"
+
+  pre_tasks:
+    - name: Ping connectivity test
+      import_tasks: tasks/ping_pong.yml
+
+  tasks:
+    - name: Apply helm alias pack
+      import_tasks: tasks/shell_aliases.yml

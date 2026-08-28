@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes Yükseltme Hazırlık Kontrolü
+- name: Kubernetes Upgrade Readiness Check
   hosts: master:singlenode
   gather_facts: true
   environment:
@@ -14,11 +14,11 @@
     upgrade_readiness_fail_on_blockers: true
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Kubernetes yükseltme hazırlık analizini çalıştır
+    - name: Run Kubernetes upgrade readiness analysis
       become: true
       script: >-
         files/k8s_upgrade_readiness_check.py
@@ -31,14 +31,14 @@
       failed_when: false
       when: inventory_hostname == first_control_plane
 
-    - name: Kubernetes yükseltme hazırlık raporu
+    - name: Kubernetes upgrade readiness report
       debug:
-        msg: "{{ upgrade_readiness_result.stdout | default(upgrade_readiness_result.stderr | default('Rapor üretilemedi')) }}"
+        msg: "{{ upgrade_readiness_result.stdout | default(upgrade_readiness_result.stderr | default('Failed to generate report')) }}"
       when: inventory_hostname == first_control_plane
 
-    - name: Yükseltme engelleri varsa playbook'u durdur
+    - name: Fail if upgrade blockers are present
       fail:
-        msg: "Kubernetes yükseltmesi için engelleyici bulgular var."
+        msg: "Blocking findings prevent a Kubernetes upgrade."
       when:
         - inventory_hostname == first_control_plane
         - upgrade_readiness_fail_on_blockers | bool

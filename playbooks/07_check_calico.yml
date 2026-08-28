@@ -1,5 +1,5 @@
 ---
-- name: Calico Sürüm Kontrolü ve Güncellemesi
+- name: Calico version check and update
   hosts: master:singlenode
   gather_facts: false
   environment:
@@ -9,18 +9,18 @@
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: "Kubeconfig / kubectl erişim kontrolü (Çalışma Şartı: ilk control-plane node olmalı)"
+    - name: "Check kubeconfig / kubectl access (When: first control-plane node)"
       command: kubectl cluster-info
       register: kubectl_check
       ignore_errors: true
       changed_when: false
       when: inventory_hostname == first_control_plane
 
-    - name: "Calico mevcut image/sürüm bilgisi (Çalışma Şartı: kubectl erişimi olmalı)"
+    - name: "Get current Calico image/version (When: kubectl access is available)"
       command: kubectl get daemonset calico-node -n kube-system -o jsonpath={.spec.template.spec.containers[0].image}
       register: calico_before
       changed_when: false
@@ -29,7 +29,7 @@
         - inventory_hostname == first_control_plane
         - kubectl_check.rc == 0
 
-    - name: "Calico manifestini uygula (Çalışma Şartı: calico_manifest_url verilmiş olmalı)"
+    - name: "Apply Calico manifest (When: calico_manifest_url is set)"
       command: kubectl apply -f {{ calico_manifest_url }}
       register: calico_apply
       changed_when: true
@@ -39,17 +39,17 @@
         - calico_manifest_url is defined
         - calico_manifest_url != ""
 
-    - name: "calico_manifest_url verilmedi uyarısı (Çalışma Şartı: calico_manifest_url verilMEMİŞ olmalı)"
+    - name: "Warn that calico_manifest_url is missing (When: calico_manifest_url is NOT set)"
       debug:
         msg: >-
-          calico_manifest_url belirtilmedi, güncelleme yapılmadı. Örnek kullanım:
-          --extra-vars "calico_manifest_url=<resmi manifest URL'i>"
+          calico_manifest_url is not set, no update applied. Example:
+          --extra-vars "calico_manifest_url=<official manifest URL>"
       when:
         - inventory_hostname == first_control_plane
         - kubectl_check.rc == 0
         - calico_manifest_url is not defined or calico_manifest_url == ""
 
-    - name: "Calico DaemonSet'in yeniden dağıtılmasını bekle (Çalışma Şartı: manifest uygulanmış olmalı)"
+    - name: "Wait for Calico DaemonSet rollout (When: manifest was applied)"
       command: kubectl rollout status daemonset/calico-node -n kube-system --timeout=180s
       changed_when: false
       when:
@@ -58,7 +58,7 @@
         - calico_manifest_url is defined
         - calico_manifest_url != ""
 
-    - name: "Calico güncelleme sonrası sürüm bilgisi (Çalışma Şartı: manifest uygulanmış olmalı)"
+    - name: "Get Calico version after update (When: manifest was applied)"
       command: kubectl get daemonset calico-node -n kube-system -o jsonpath={.spec.template.spec.containers[0].image}
       register: calico_after
       changed_when: false
@@ -69,9 +69,9 @@
         - calico_manifest_url is defined
         - calico_manifest_url != ""
 
-    - name: "Calico sürüm raporu (Çalışma Şartı: ilk control-plane node olmalı ve kubectl erişimi olmalı)"
+    - name: "Calico version report (When: first control-plane node and kubectl access)"
       debug:
-        msg: "Calico: {{ calico_before.stdout | default('bilinmiyor') }} -> {{ calico_after.stdout | default(calico_before.stdout) | default('bilinmiyor') }}"
+        msg: "Calico: {{ calico_before.stdout | default('unknown') }} -> {{ calico_after.stdout | default(calico_before.stdout) | default('unknown') }}"
       when:
         - inventory_hostname == first_control_plane
         - kubectl_check.rc == 0

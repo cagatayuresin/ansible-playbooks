@@ -1,33 +1,36 @@
 ---
+lang: en
 title: "31 · check_external_endpoints"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 31
 ---
 
-# 31. Dış Endpoint Bağlantı Testi
+# 31_check_external_endpoints.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
 
-Projenizin çalışması için kritik olan dış API ve web sitelerinin (Payment API'leri, SMS servisleri vb.) erişilebilirliğini ve hızını kontrol eder.
+Checks reachability and latency of external APIs and websites that your project depends on (payment APIs, SMS services, and similar).
 
 **Playbook:** `playbooks/31_check_external_endpoints.yml`
 
-## Ne Yapar?
-* Playbook içine tanımlanmış olan kritik URL listesine HTTP GET istekleri gönderir.
-* Dönen HTTP durum kodunu (200 OK) ve isteğin milisaniye cinsinden ne kadar sürdüğünü raporlar.
-* Bu playbook `localhost` üzerinde çalışır; SSH ile hedef sunuculara gitmez, çalıştığı makineden ağ testleri yapar.
+## What it does
 
-## Parametreler
-Playbook içindeki `endpoints` listesini kendi kritik servislerinize göre güncellemelisiniz.
+* Sends HTTP GET requests to the critical URL list defined in the playbook.
+* Reports the HTTP status code (200 OK) and how long the request took in milliseconds.
+* This playbook runs on `localhost`; it does not SSH to target servers. It tests the network from the machine where it runs.
 
-## Örnek Çıktı
+## Parameters
 
-```
-[BAŞARILI] Google API (https://www.google.com)
-Durum Kodu: 200
-Geçen Süre: 0.231 saniye
+Update the `endpoints` list inside the playbook to match your critical services.
 
-[HATA] Örnek Endpoint (https://api.github.com/hata)
-Durum Kodu: 404
-Geçen Süre: 0.150 saniye
+## Sample output
+
+```text
+[SUCCESS] Google API (https://www.google.com)
+Status code: 200
+Elapsed time: 0.231 seconds
+
+[ERROR] Example Endpoint (https://api.github.com/error)
+Status code: 404
+Elapsed time: 0.150 seconds
 ```

@@ -1,40 +1,41 @@
 ---
+lang: en
 title: "03 · check_docker_containers"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 3
 ---
 
-# 03_check_docker_containers.yml - Kullanım Kılavuzu
+# 03_check_docker_containers.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Docker](https://img.shields.io/badge/Runtime-Docker-2496ED?style=flat&logo=docker&logoColor=white)
 
-## Amaç
+## Purpose
 
-Bu playbook, inventory'deki sunucularda Docker'ın kurulu olup olmadığını kontrol eder. Eğer Docker mevcutsa, `docker ps -a` benzeri bir komut çalıştırarak sunucudaki tüm container'ların isimlerini, sağlık durumlarını/ne zamandır ayakta olduklarını (Status/Uptime) ve açık portlarını ekrana tablo düzeninde yazdırır. Ayrıca genel ağa açık olan (0.0.0.0) portlar için tıklanabilir browser linkleri üretir.
+This playbook checks whether Docker is installed on the inventory hosts. If Docker is present, it runs a `docker ps -a`-style command and prints a table of container names, health/uptime (Status/Uptime), and published ports. It also generates clickable browser links for ports bound to the public address (`0.0.0.0`).
 
-## Gereksinimler
+## Requirements
 
-- Hedef sunucularda Docker yüklü olmalıdır. (Yüklü değilse hata vermez, sadece yüklü olmadığını belirtir.)
-- Ansible inventory'nizde ilgili gruplar (örn. `workers`, `master`) tanımlanmış olmalıdır.
+- Docker should be installed on the target hosts. (If it is not, the playbook does not fail; it only reports that Docker is missing.)
+- Your Ansible inventory must define the relevant groups (for example `workers`, `master`).
 
-Container tablosu okunaklı olması için Docker'ın kendi `table` formatıyla ayrıca alınır (görüntüleme amaçlı); link üretimi ise `docker ps --format '{% raw %}{{json .}}{% endraw %}'` ile alınan yapılandırılmış JSON çıktısı üzerinden yapılır (önceki `sed` regex tabanlı yaklaşımın yerine). Bu sayede birden fazla porta açık olan container'ların tüm portları için ayrı ayrı link üretilir; eski yaklaşım satır başına yalnızca ilk portu yakalıyordu.
+The container table is collected separately with Docker's own `table` format (for display). Link generation uses structured JSON from `docker ps --format '{% raw %}{{json .}}{% endraw %}'` (replacing the earlier `sed` regex approach). That way every published port on a multi-port container gets its own link; the old approach captured only the first port per line.
 
-## Çalıştırma Komutu
+## How to run
 
 ```bash
-# Tüm sunucularda (master + workers + datanode) çalıştırmak için:
+# Run on all servers (master + workers + datanode):
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/03_check_docker_containers.yml
 
-# Sadece workers grubunda (worker1, worker2, worker3) çalıştırmak için limit verebilirsiniz:
+# Limit to the workers group (worker1, worker2, worker3):
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/03_check_docker_containers.yml --limit workers
 ```
 
-## Örnek Çıktı
+## Sample output
 
-Komut çalıştırıldığında öncelikle "Ping pong" ile bağlantılar kontrol edilir. Docker yüklüyse, formatlanmış container listesi verilir:
+A ping connectivity test runs first. If Docker is installed, a formatted container list is printed:
 
 ```text
-TASK [Ping pong] ***************************************************************
+TASK [Ping connectivity test] **************************************************
 ok: [192.168.1.21]
 
 TASK [Check if Docker is installed] ********************************************
@@ -61,7 +62,7 @@ ok: [192.168.1.21] => (item=old-container)
 
 TASK [Display container links] *************************************************
 ok: [192.168.1.21] => {
-    "msg": "Aşağıdaki container portlarına browser üzerinden erişebilirsiniz:\n\n- nginx-proxy -> http://192.168.1.21:80\n- payment-api -> http://192.168.1.21:8080"
+    "msg": "You can reach the following container ports in a browser:\n\n- nginx-proxy -> http://192.168.1.21:80\n- payment-api -> http://192.168.1.21:8080"
 }
 
 TASK [Docker not found message] ************************************************

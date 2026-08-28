@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes RBAC Risk Kontrolü
+- name: Kubernetes RBAC Risk Check
   hosts: master:singlenode
   gather_facts: false
   environment:
@@ -11,11 +11,11 @@
     rbac_risks_max_findings: 400
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: RBAC risk analizini çalıştır
+    - name: Run RBAC risk analysis
       script: >-
         files/k8s_rbac_risks_check.py
         --exclude-namespaces {{ rbac_risks_excluded_namespaces | quote }}
@@ -25,7 +25,7 @@
       failed_when: false
       when: inventory_hostname == first_control_plane
 
-    - name: RBAC risk raporu
+    - name: RBAC risk report
       debug:
-        msg: "{{ rbac_risks_result.stdout | default(rbac_risks_result.stderr | default('Rapor üretilemedi')) }}"
+        msg: "{{ rbac_risks_result.stdout | default(rbac_risks_result.stderr | default('Failed to generate report')) }}"
       when: inventory_hostname == first_control_plane

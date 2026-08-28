@@ -8,12 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Reversible shell alias playbooks for kubectl, Helm, Docker, Git, system, Python, libvirt, helpers, and the interactive `sysupdate` function (43-51, 53).
+- Workstation APT/snap/flatpak maintenance playbook with a confirm lock (52).
 - Kubernetes etcd backup, large file check, and external endpoint connectivity playbooks (29-31).
 - etcd restore verification, Kubernetes upgrade readiness, workload resilience, Service/EndpointSlice, Pod Security, RBAC, control-plane security, pod diagnostics, node drift, patch/reboot, and support bundle playbooks (32-42).
 - CI checks for the example inventory, helper script syntax, playbook/document mapping, and Kubernetes upgrade version policy.
 - Explicit etcd snapshot retention configuration.
 
 ### Changed
+- Alias packs follow the target user's login shell rc file (bash `.bashrc`, zsh `.zshrc`, dash/sh `.profile`) instead of assuming zsh.
+- Switched playbook, helper, and alias user-facing strings and comments to English.
+- Made GitHub Pages documentation English by default, with a Türkçe language switch serving `docs/tr/`.
 - Secured etcd backup directory and snapshot permissions and corrected its state-changing label.
 - Pinned the default Metrics Server manifest to v0.8.1.
 - Enforced Kubernetes target version format and supported upgrade range before package changes.

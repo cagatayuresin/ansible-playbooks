@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes ve Linux Node Baseline Drift Kontrolü
+- name: Kubernetes and Linux Node Baseline Drift Check
   hosts: all
   gather_facts: true
 
@@ -25,33 +25,33 @@
       - reboot_required
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Node baseline verisini topla
+    - name: Collect node baseline data
       become: true
       script: files/node_baseline_collect.py
       register: node_baseline_raw
       changed_when: false
       failed_when: false
 
-    - name: Node baseline verisini fact olarak kaydet
+    - name: Save node baseline data as a fact
       set_fact:
         node_baseline_data: "{{ node_baseline_raw.stdout | from_json }}"
       when: node_baseline_raw.rc == 0
 
-    - name: Node baseline toplama hatası
+    - name: Node baseline collection error
       debug:
-        msg: "{{ node_baseline_raw.stderr | default(node_baseline_raw.stdout | default('Bilinmeyen hata')) }}"
+        msg: "{{ node_baseline_raw.stderr | default(node_baseline_raw.stdout | default('Unknown error')) }}"
       when: node_baseline_raw.rc != 0
 
-    - name: Host bazlı node baseline raporu
+    - name: Per-host node baseline report
       debug:
         msg: "{{ node_baseline_data | to_nice_json }}"
       when: node_baseline_data is defined
 
-    - name: Node'lar arası drift özeti
+    - name: Cross-node drift summary
       debug:
         msg: >-
           {{ '[DRIFT]' if (baseline_values | length) > 1 else '[OK]' }}
@@ -62,7 +62,7 @@
             ansible_play_hosts
             | map('extract', hostvars, 'node_baseline_data')
             | select('defined')
-            | map(attribute=item, default='TOPLANAMADI')
+            | map(attribute=item, default='unavailable')
             | unique
             | list
           }}

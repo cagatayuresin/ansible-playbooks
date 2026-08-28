@@ -1,40 +1,42 @@
 ---
+lang: en
 title: "29 · backup_k8s_etcd"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 29
 ---
 
-# 29. K8s etcd Veritabanı Yedeği Alma
+# 29_backup_k8s_etcd.yml - Usage Guide
 
 ![Modifies State](https://img.shields.io/badge/State-Modifies-E3000F?style=flat) ![k3s](https://img.shields.io/badge/Kubernetes-k3s-FFC61C?style=flat&logo=kubernetes&logoColor=black) ![kubeadm](https://img.shields.io/badge/Kubernetes-kubeadm-326CE5?style=flat&logo=kubernetes&logoColor=white)
 
-Kubernetes'in kalbi olan `etcd` veritabanının anlık görüntüsünü (snapshot) alır ve güvenli bir şekilde yedekler.
+Takes a snapshot of the `etcd` database (the heart of Kubernetes) and stores it safely.
 
 **Playbook:** `playbooks/29_backup_k8s_etcd.yml`
 
-## Ne Yapar?
-* Cluster'da `k3s` veya `kubeadm` (etcdctl) olup olmadığını otomatik algılar.
-* Snapshot işlemini gerçekleştirip yedeği `/var/backups/etcd` klasörüne zaman damgasıyla kaydeder.
-* Yedek dizinini `0700`, snapshot dosyalarını `0600` izinleriyle korur.
-* Başarılı yedeklemeden sonra saklama süresinden eski snapshot'ları temizler.
-* İşlemi sadece master node'lar üzerindeki ilk sunucuda çalıştırarak gereksiz tekrarları önler.
+## What it does
 
-## Parametreler (Opsiyonel)
+* Detects whether the cluster uses `k3s` or `kubeadm` (etcdctl).
+* Takes the snapshot and saves it under `/var/backups/etcd` with a timestamp.
+* Protects the backup directory with `0700` and snapshot files with `0600`.
+* After a successful backup, removes snapshots older than the retention period.
+* Runs only on the first server in the master nodes to avoid duplicate work.
 
-| Değişken | Varsayılan | Açıklama |
+## Parameters (optional)
+
+| Variable | Default | Description |
 |---|---|---|
-| `etcd_backup_retention_days` | `30` | Başarılı yedeklemeden sonra bu süreden eski snapshot'ları siler. Pozitif tam sayı olmalıdır. |
+| `etcd_backup_retention_days` | `30` | After a successful backup, deletes snapshots older than this many days. Must be a positive integer. |
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/29_backup_k8s_etcd.yml \
   --extra-vars 'etcd_backup_retention_days=14'
 ```
 
-> etcd snapshot'ı Kubernetes Secret verilerini de içerir. Yedek dizinine erişimi yalnızca yetkili kullanıcılarla sınırlandırın ve yedeği şifreli, ayrı bir ortama kopyalayın.
+> An etcd snapshot also contains Kubernetes Secret data. Restrict access to the backup directory to authorized users and copy the backup to a separate, encrypted location.
 
-## Örnek Çıktı
+## Sample output
 
-```
+```text
 ################################################################################
 # HOST: master1
 ################################################################################

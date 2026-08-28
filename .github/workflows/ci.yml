@@ -35,6 +35,10 @@ jobs:
         run: |
           python -m compileall -q playbooks/files
           bash -n playbooks/files/k8s_etcd_backup.sh
+          for f in playbooks/files/shell-aliases/*.sh; do
+            echo "== bash -n $f =="
+            bash -n "$f"
+          done
 
       - name: Test helper logic
         run: python -m unittest discover -s tests -p 'test_*.py'
@@ -43,8 +47,11 @@ jobs:
         run: |
           set -e
           for f in playbooks/[0-9][0-9]_*.yml; do
-            doc="docs/$(basename "$f" .yml).md"
+            base="$(basename "$f" .yml)"
+            doc="docs/${base}.md"
+            doc_tr="docs/tr/${base}.md"
             test -f "$doc" || { echo "Missing documentation: $doc"; exit 1; }
+            test -f "$doc_tr" || { echo "Missing Turkish documentation: $doc_tr"; exit 1; }
           done
 
       - name: Validate Kubernetes version policy

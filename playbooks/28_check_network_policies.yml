@@ -1,5 +1,5 @@
 ---
-- name: NetworkPolicy Envanteri
+- name: NetworkPolicy Inventory
   hosts: master:singlenode
   gather_facts: true
   environment:
@@ -7,15 +7,15 @@
 
   vars:
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
-    # Boş = tüm namespace; dolu = sadece o namespace
+    # Empty = all namespaces; set to limit to one namespace
     netpol_namespace: ""
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: NetworkPolicy raporunu üret
+    - name: Generate NetworkPolicy report
       script: >-
         k8s_network_policies_check.py
         --namespace {{ netpol_namespace | default('') | quote }}
@@ -27,7 +27,7 @@
       check_mode: false
       when: inventory_hostname == first_control_plane
 
-    - name: NetworkPolicy envanter raporu
+    - name: NetworkPolicy inventory report
       debug:
         msg:
           - |
@@ -36,5 +36,5 @@
             # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
             # namespace: {{ netpol_namespace if (netpol_namespace | default('') | length) > 0 else 'ALL' }}
             ################################################################################
-          - "{{ netpol_report.stdout | default(netpol_report.stderr | default('Rapor üretilemedi')) }}"
+          - "{{ netpol_report.stdout | default(netpol_report.stderr | default('Failed to generate report')) }}"
       when: inventory_hostname == first_control_plane

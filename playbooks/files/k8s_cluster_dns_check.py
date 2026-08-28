@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Salt-okunur: cluster DNS / CoreDNS health + resolution tests."""
+"""Read-only: cluster DNS / CoreDNS health + resolution tests."""
 from __future__ import annotations
 
 import json
@@ -24,28 +24,28 @@ def section(title: str) -> list[str]:
 
 def main() -> None:
     lines: list[str] = []
-    lines.append("Cluster DNS / CoreDNS raporu (salt-okunur)")
+    lines.append("Cluster DNS / CoreDNS report (read-only)")
 
     rc, _, err = run("kubectl cluster-info")
     if rc != 0:
-        lines.append(f"kubectl erişimi yok: {err}")
+        lines.append(f"kubectl access missing: {err}")
         print("\n".join(lines))
         return
 
-    lines.extend(section("kube-dns / CoreDNS servis"))
+    lines.extend(section("kube-dns / CoreDNS service"))
     rc, out, err = run("kubectl get svc -n kube-system kube-dns -o wide")
     if rc != 0:
         rc, out, err = run(
             "kubectl get svc -n kube-system -l k8s-app=kube-dns -o wide"
         )
-    lines.append(out if rc == 0 else (err or "kube-dns svc yok"))
+    lines.append(out if rc == 0 else (err or "kube-dns svc missing"))
 
-    lines.extend(section("CoreDNS / kube-dns pod'ları"))
+    lines.extend(section("CoreDNS / kube-dns pods"))
     rc, out, _ = run(
         "kubectl get pods -n kube-system -o wide --no-headers 2>/dev/null | "
         "grep -iE 'coredns|kube-dns' || true"
     )
-    lines.append(out if out else "(coredns/kube-dns pod bulunamadı)")
+    lines.append(out if out else "(coredns/kube-dns pod not found)")
 
     # endpoints
     lines.extend(section("kube-dns Endpoints"))
@@ -65,16 +65,16 @@ def main() -> None:
                         addrs.append(
                             f"NOTREADY {a.get('ip')} ({a.get('targetRef', {}).get('name', '-')})"
                         )
-                lines.append("Hazır: " + (", ".join(addrs) if addrs else "(boş!)"))
+                lines.append("Ready: " + (", ".join(addrs) if addrs else "(empty!)"))
             else:
                 lines.append(out[:1500])
         except Exception:
             lines.append(out[:1500])
     else:
-        lines.append(err or "endpoints alınamadı")
+        lines.append(err or "endpoints could not be retrieved")
 
     # ConfigMap Corefile snippet
-    lines.extend(section("CoreDNS ConfigMap (Corefile özeti)"))
+    lines.extend(section("CoreDNS ConfigMap (Corefile summary)"))
     rc, out, _ = run(
         "kubectl get configmap -n kube-system coredns -o jsonpath='{.data.Corefile}' 2>/dev/null"
     )
@@ -82,12 +82,12 @@ def main() -> None:
         for line in out.splitlines()[:40]:
             lines.append(line)
         if len(out.splitlines()) > 40:
-            lines.append("... (kısaltıldı)")
+            lines.append("... (truncated)")
     else:
-        lines.append("coredns ConfigMap/Corefile okunamadı")
+        lines.append("coredns ConfigMap/Corefile unreadable")
 
     # Resolution: CoreDNS image usually has no dig/nslookup; query ClusterIP from the node.
-    lines.extend(section("Çözümleme testleri (kube-dns ClusterIP üzerinden)"))
+    lines.extend(section("Resolution tests (via kube-dns ClusterIP)"))
     rc, dns_ip, _ = run(
         "kubectl get svc -n kube-system kube-dns -o jsonpath='{.spec.clusterIP}' 2>/dev/null"
     )
@@ -118,22 +118,22 @@ def main() -> None:
                 for l in out.splitlines()[:6]:
                     lines.append(f"     {l}")
             else:
-                lines.append(f"FAIL {name} — {err or out or 'yanıt yok'}")
+                lines.append(f"FAIL {name} — {err or out or 'no response'}")
     else:
-        lines.append("kube-dns ClusterIP alınamadı — çözümleme atlandı.")
+        lines.append("kube-dns ClusterIP could not be retrieved — resolution skipped.")
     # NodeLocal DNS if present
-    lines.extend(section("NodeLocal DNS (varsa)"))
+    lines.extend(section("NodeLocal DNS (if present)"))
     rc, out, _ = run(
         "kubectl get pods -A --no-headers 2>/dev/null | grep -i node-local-dns || true"
     )
-    lines.append(out if out else "(node-local-dns yok)")
+    lines.append(out if out else "(node-local-dns none)")
 
     lines.append("")
     lines.append(
-        "Yorum: Endpoints boş veya kubernetes.default FAIL → cluster DNS kırık; "
-        "dış DNS (19) ayrı konudur."
+        "Note: Empty Endpoints or kubernetes.default FAIL → cluster DNS is broken; "
+        "external DNS (19) is a separate topic."
     )
-    lines.append("Detay: docs/27_check_cluster_dns.md")
+    lines.append("Details: docs/27_check_cluster_dns.md")
     print("\n".join(lines))
 
 

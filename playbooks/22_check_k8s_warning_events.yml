@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes Warning Event Raporu
+- name: Kubernetes warning event report
   hosts: master:singlenode
   gather_facts: true
   environment:
@@ -7,18 +7,18 @@
 
   vars:
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
-    # --extra-vars ile: events_since_hours=48 events_limit=120 events_namespace=n8n
+    # Via --extra-vars: events_since_hours=48 events_limit=120 events_namespace=n8n
     events_since_hours: 24
     events_limit: 80
-    # Boş = tüm namespace'ler; dolu = sadece o namespace
+    # Empty = all namespaces; set = that namespace only
     events_namespace: ""
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
   tasks:
-    - name: Warning event raporunu üret
+    - name: Generate warning event report
       script: >-
         k8s_warning_events_check.py
         --since-hours {{ events_since_hours | int }}
@@ -32,7 +32,7 @@
       check_mode: false
       when: inventory_hostname == first_control_plane
 
-    - name: Warning event raporu
+    - name: Warning event report
       debug:
         msg:
           - |
@@ -42,5 +42,5 @@
             # since_hours: {{ events_since_hours }} | limit: {{ events_limit }}
             # namespace: {{ events_namespace if (events_namespace | default('') | length) > 0 else 'ALL' }}
             ################################################################################
-          - "{{ events_report.stdout | default(events_report.stderr | default('Rapor üretilemedi')) }}"
+          - "{{ events_report.stdout | default(events_report.stderr | default('Report could not be generated')) }}"
       when: inventory_hostname == first_control_plane

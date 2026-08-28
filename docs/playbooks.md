@@ -1,10 +1,11 @@
 ---
-title: Playbook Kılavuzları
+lang: en
+title: Playbook Guides
 nav_order: 3
 has_children: true
 ---
 
-# Playbook Kılavuzları
+# Playbook Guides
 
-Kubernetes cluster'ları ve sunucular için hazırlanan playbookların kullanım,
-değişken ve güvenlik bilgilerine aşağıdaki sıralı kılavuzlardan ulaşabilirsiniz.
+Use the numbered guides below for how to run each playbook, which
+variables it accepts, and any security notes for Kubernetes clusters and servers.

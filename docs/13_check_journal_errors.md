@@ -1,46 +1,47 @@
 ---
+lang: en
 title: "13 · check_journal_errors"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 13
 ---
 
-# 13_check_journal_errors.yml - Kullanım Kılavuzu
+# 13_check_journal_errors.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat)
 
-## Amaç
+## Purpose
 
-DevOps / SRE teşhisi için her node’da `journalctl` ile:
+For DevOps / SRE diagnosis, on each node via `journalctl`:
 
-1. **Kernel** hata logları (`err` ve üzeri)
-2. **Kernel** uyarıları (`warning`)
-3. **Sistem genel** hata logları (tüm systemd unit’leri, `err` ve üzeri)
-4. **Bu boot** içindeki kernel hataları
+1. **Kernel** error logs (`err` and above)
+2. **Kernel** warnings (`warning`)
+3. **System-wide** error logs (all systemd units, `err` and above)
+4. **Kernel errors for this boot**
 
-salt-okunur şekilde toplar ve raporlar. Sistemi değiştirmez.
+collected and reported read-only. Does not change the system.
 
-[10_check_system_health](10_check_system_health.md) genel sağlık özetidir; bu playbook log seviyesinde “ne kırıldı / ne uyarıyor” arar.
+[10_check_system_health](10_check_system_health.md) is the overall health summary; this playbook looks at log level for “what broke / what is warning”.
 
-## Çoklu makine çıktısı
+## Multi-host output
 
-Her host raporunun **ilk satırı** makine kimliğidir:
+The **first line** of each host report is machine identity:
 
 ```text
 ################################################################################
 # HOST: 192.168.1.21
 # hostname: worker1
-# aralık: 24 hours ago | satır limiti/bölüm: 80
+# since: 24 hours ago | line limit/section: 80
 ################################################################################
 ```
 
-`HOST` = inventory’deki adres/isim (`inventory_hostname`), `hostname` = makinenin kendi hostname’i. Birden fazla node’da çalıştırınca hangi bloğun hangi makineye ait olduğu buradan okunur. Ansible zaten `ok: [host]` yazar; uzun raporlarda kaybolmamak için mesajın içine de gömüldü.
+`HOST` = address/name in inventory (`inventory_hostname`), `hostname` = the machine's own hostname. When you run it on several nodes, use that to see which block belongs to which machine. Ansible already writes `ok: [host]`; the identity is also embedded in the message so it is not lost in a long report.
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `journal_since` | `24 hours ago` | journalctl `--since` değeri |
-| `journal_lines` | `80` | Her bölümde en fazla kaç satır |
+| `journal_since` | `24 hours ago` | journalctl `--since` value |
+| `journal_lines` | `80` | Maximum lines per section |
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/13_check_journal_errors.yml \
@@ -49,68 +50,68 @@ ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/13_check_journal_e
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/13_check_journal_errors.yml --limit workers
 ```
 
-## Gereksinimler
+## Requirements
 
 - `hosts: all`
-- `become: true` (sudo) — sistem journal’ını okumak için genelde root gerekir; `ansible_become_pass` inventory’de olmalı.
-- `systemd-journald` çalışan bir Linux host (Ubuntu/Debian vb.)
+- `become: true` (sudo) — reading the system journal usually needs root; `ansible_become_pass` must be in inventory.
+- A Linux host running `systemd-journald` (Ubuntu/Debian and similar)
 
-## Çalıştırma Komutu
+## How to run
 
 ```bash
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/13_check_journal_errors.yml
 ```
 
-## Bölümler nasıl yorumlanır?
+## How to read the sections
 
-### journalctl öncelik seviyeleri
+### journalctl priority levels
 
-| Seviye | Anlam |
+| Level | Meaning |
 |---|---|
-| emerg / alert / crit | Acil / kritik |
-| err | Hata — bakılmalı |
-| warning | Uyarı — trend / erken sinyal |
-| notice / info / debug | Bu playbook’ta filtrelenmez (gürültü) |
+| emerg / alert / crit | Emergency / critical |
+| err | Error — should be investigated |
+| warning | Warning — trend / early signal |
+| notice / info / debug | Not filtered by this playbook (noise) |
 
 ### Kernel ERR+
 
-Donanım, sürücü, bellek, dosya sistemi kernel tarafı. Örnek kırmızı bayraklar:
+Hardware, driver, memory, filesystem on the kernel side. Example red flags:
 
-- `Out of memory` / `oom-killer` → bellek baskısı
+- `Out of memory` / `oom-killer` → memory pressure
 - `I/O error`, `Buffer I/O error`, `EXT4-fs error` → disk
-- `nvme` / `ata` reset, timeout → depolama yolu
-- `BUG:`, `Oops`, `general protection fault` → kernel/sürücü ciddi arıza
-- `NETDEV WATCHDOG`, NIC reset → ağ
+- `nvme` / `ata` reset, timeout → storage path
+- `BUG:`, `Oops`, `general protection fault` → serious kernel/driver failure
+- `NETDEV WATCHDOG`, NIC reset → network
 
 ### Kernel WARNING
 
-Henüz çökme değil; thrashing, deprecated API, retry, thermal throttle vb. Tek seferlik gürültü olabilir; **tekrarlayan** aynı uyarılar önemli.
+Not a crash yet; thrashing, deprecated API, retry, thermal throttle, and so on. A one-off can be noise; **repeating** identical warnings matter.
 
-### Sistem ERR+ (tüm unit’ler)
+### System ERR+ (all units)
 
-`sshd`, `kubelet`, `containerd`, `cron`, auth, uygulama unit’leri. Kernel boş ama burası doluysa sorun userspace’tedir. Aynı unit’in tekrarlayan fail satırları → `systemctl status <unit>` / `journalctl -u <unit>`.
+`sshd`, `kubelet`, `containerd`, `cron`, auth, application units. If the kernel section is empty but this one is full, the problem is in userspace. Repeating fail lines from the same unit → `systemctl status <unit>` / `journalctl -u <unit>`.
 
-### Bu boot kernel ERR+
+### This boot kernel ERR+
 
-`--since`’ten bağımsız; son reboot’tan beri. “Dün düzeldi ama bu açılıştan beri yine var mı?” sorusu için.
+Independent of `--since`; since the last reboot. Answers “it was fixed yesterday, but is it back since this boot?”.
 
-Boş bölümler `-- Bu aralıkta / bu öncelikte kayıt yok --` yazar; bu genelde iyi haberdir.
+Empty sections print `-- No records in this window / at this priority --`; that is usually good news.
 
-## Örnek Çıktı (kısaltılmış)
+## Sample output (shortened)
 
 ```text
-TASK [Journal hata / kernel log raporu] ***
+TASK [Journal error / kernel log report] ***
 ok: [192.168.1.21] => {
   "msg": [
-    "################################################################################\n# HOST: 192.168.1.21\n# hostname: worker1\n# aralık: 24 hours ago | satır limiti/bölüm: 80\n################################################################################",
-    "=== Kernel ERR+ (24 hours ago) ===\nYorum: ...\n-- Bu aralıkta / bu öncelikte kayıt yok --",
-    "=== Sistem ERR+ tüm unit'ler (24 hours ago) ===\n...\n2026-07-29T10:01:02+00:00 worker1 kubelet[1234]: E0729 ... failed to ..."
+    "################################################################################\n# HOST: 192.168.1.21\n# hostname: worker1\n# since: 24 hours ago | line limit/section: 80\n################################################################################",
+    "=== Kernel ERR+ (24 hours ago) ===\nComment: ...\n-- No records in this window / at this priority --",
+    "=== System ERR+ all units (24 hours ago) ===\n...\n2026-07-29T10:01:02+00:00 worker1 kubelet[1234]: E0729 ... failed to ..."
   ]
 }
 ```
 
-## Notlar
+## Notes
 
-- Satır limiti aşılırsa en **yeni** kayıtlar gelir (`-n`); daha geriye gitmek için `journal_lines` artır veya `journal_since` genişlet.
-- Çok gürültülü ortamlarda önce `--limit` ile şüpheli node’u hedefle.
-- Salt-okunur: log silmez, journal’ı truncate etmez.
+- If the line limit is hit, the **newest** records are returned (`-n`); to go further back, increase `journal_lines` or widen `journal_since`.
+- In noisy environments, target the suspected node first with `--limit`.
+- Read-only: does not delete logs or truncate the journal.

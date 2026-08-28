@@ -1,14 +1,14 @@
 ---
-- name: Mevcut kubeadm sürümü okunabilmeli
+- name: Current kubeadm version must be readable
   assert:
     that:
       - kubeadm_version.rc == 0
       - (kubeadm_version.stdout | trim) is match('^v[0-9]+\.[0-9]+\.[0-9]+([+-].*)?$')
     fail_msg: >-
-      Mevcut kubeadm sürümü güvenilir biçimde okunamadı; güvenli yükseltme
-      aralığı doğrulanamadığı için bu node üzerinde işlem durduruldu.
+      Current kubeadm version could not be read reliably; the operation was
+      stopped on this node because the safe upgrade range could not be validated.
 
-- name: Mevcut ve hedef Kubernetes sürüm bileşenlerini hazırla
+- name: Prepare current and target Kubernetes version components
   set_fact:
     current_kube_version_parts: >-
       {{
@@ -23,7 +23,7 @@
       }}
     target_kube_version_parts: "{{ kube_version.split('.') | map('int') | list }}"
 
-- name: Kubernetes yükseltme aralığını doğrula
+- name: Validate Kubernetes upgrade range
   assert:
     that:
       - target_kube_version_parts[0] == current_kube_version_parts[0]
@@ -33,7 +33,7 @@
         target_kube_version_parts[1] > current_kube_version_parts[1]
         or target_kube_version_parts[2] >= current_kube_version_parts[2]
     fail_msg: >-
-      Desteklenmeyen yükseltme: mevcut {{ kubeadm_version.stdout | trim }},
-      hedef v{{ kube_version }}. Major sürüm değiştirilemez, minor sürüm
-      düşürülemez veya birden fazla artırılamaz ve aynı minor içinde patch
-      sürümü düşürülemez.
+      Unsupported upgrade: current {{ kubeadm_version.stdout | trim }},
+      target v{{ kube_version }}. The major version cannot be changed, the minor
+      version cannot be decreased or increased by more than one, and the patch
+      version cannot be decreased within the same minor.

@@ -1,5 +1,5 @@
 ---
-- name: Kubernetes Control-Plane Güncellemesi (kubeadm upgrade apply/node)
+- name: Kubernetes control-plane upgrade (kubeadm upgrade apply/node)
   hosts: master:singlenode
   serial: 1
   gather_facts: false
@@ -8,17 +8,17 @@
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
-    - name: Hedef Kubernetes sürüm girdisini doğrula
+    - name: Validate target Kubernetes version
       import_tasks: tasks/validate_kube_version.yml
 
   tasks:
-    - name: Node güncelleme adımlarını çalıştır
+    - name: Run node upgrade steps
       import_tasks: tasks/k8s_upgrade_node.yml
 
-- name: Kubernetes Worker Node Güncellemesi (kubeadm upgrade node)
+- name: Kubernetes worker node upgrade (kubeadm upgrade node)
   hosts: workers
   serial: 1
   gather_facts: false
@@ -27,12 +27,12 @@
     first_control_plane: "{{ (groups['master'] | default([]) + groups['singlenode'] | default([])) | first }}"
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
-    - name: Hedef Kubernetes sürüm girdisini doğrula
+    - name: Validate target Kubernetes version
       import_tasks: tasks/validate_kube_version.yml
 
   tasks:
-    - name: Node güncelleme adımlarını çalıştır
+    - name: Run node upgrade steps
       import_tasks: tasks/k8s_upgrade_node.yml

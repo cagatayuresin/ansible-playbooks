@@ -1,5 +1,5 @@
 ---
-- name: etcd Yedeği Bütünlük ve Geri Dönüş Doğrulaması
+- name: etcd Backup Integrity and Restore Verification
   hosts: master:singlenode
   gather_facts: false
 
@@ -11,19 +11,19 @@
     etcd_backup_verify_fail_on_error: true
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
-    - name: etcd yedek doğrulama parametrelerini kontrol et
+    - name: Validate etcd backup verification parameters
       assert:
         that:
           - (etcd_backup_max_age_hours | string) is match('^[1-9][0-9]*$')
           - etcd_backup_directory | length > 1
-        fail_msg: "Yedek dizini ve maksimum yedek yaşı geçerli olmalıdır."
+        fail_msg: "Backup directory and maximum backup age must be valid."
       when: inventory_hostname == first_control_plane
 
   tasks:
-    - name: Son etcd snapshot'ını doğrula
+    - name: Verify latest etcd snapshot
       become: true
       script: >-
         files/etcd_backup_verify.py
@@ -35,14 +35,14 @@
       failed_when: false
       when: inventory_hostname == first_control_plane
 
-    - name: etcd yedek doğrulama raporu
+    - name: etcd backup verification report
       debug:
-        msg: "{{ etcd_backup_verify_result.stdout | default(etcd_backup_verify_result.stderr | default('Rapor üretilemedi')) }}"
+        msg: "{{ etcd_backup_verify_result.stdout | default(etcd_backup_verify_result.stderr | default('Failed to generate report')) }}"
       when: inventory_hostname == first_control_plane
 
-    - name: Geçersiz etcd yedeğinde playbook'u durdur
+    - name: Fail on invalid etcd backup
       fail:
-        msg: "Son etcd yedeği doğrulanamadı; yukarıdaki raporu inceleyin."
+        msg: "Latest etcd backup could not be verified; review the report above."
       when:
         - inventory_hostname == first_control_plane
         - etcd_backup_verify_fail_on_error | bool

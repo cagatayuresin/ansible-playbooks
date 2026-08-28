@@ -1,77 +1,78 @@
 ---
+lang: en
 title: "17 · check_container_images"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 17
 ---
 
-# 17_check_container_images.yml - Kullanım Kılavuzu
+# 17_check_container_images.yml - Usage Guide
 
 ![Read-Only](https://img.shields.io/badge/State-Read--Only-10B981?style=flat) ![Docker](https://img.shields.io/badge/Runtime-Docker-2496ED?style=flat&logo=docker&logoColor=white)
 
-## Amaç
+## Purpose
 
-Her host’ta yüklü **container imajlarını** envanterler:
+Inventories **container images** installed on each host:
 
-| Sütun | Anlam |
+| Column | Meaning |
 |---|---|
-| `IN_USE` | `yes` = bu host’ta en az bir container (çalışan veya durmuş) bu imajı kullanıyor; `no` = şu an referans yok |
-| `CREATED_AT/AGE` | Docker: mutlak oluşturma zamanı. containerd/k3s: çoğu sürümde `createdAt` yok → `ctr content` **AGE** (örn. `6 months`, `5 weeks`) |
-| `SIZE` | Disk boyutu |
-| `IMAGE` | Repo:tag (ve kısa image id) |
+| `IN_USE` | `yes` = at least one container on this host (running or stopped) uses this image; `no` = no current reference |
+| `CREATED_AT/AGE` | Docker: absolute create time. containerd/k3s: most versions have no `createdAt` → `ctr content` **AGE** (e.g. `6 months`, `5 weeks`) |
+| `SIZE` | Disk size |
+| `IMAGE` | Repo:tag (and short image id) |
 
-Runtime otomatik bulunur:
+Runtime is detected automatically:
 
-- **Docker** varsa → `docker images` + `docker ps -a`
-- **crictl / containerd** (K8s/k3s) varsa → `crictl images` + `crictl ps -a`
+- **Docker** if present → `docker images` + `docker ps -a`
+- **crictl / containerd** (K8s/k3s) if present → `crictl images` + `crictl ps -a`
 
-İkisi birden varsa iki bölüm de basılır. Hiçbiri yoksa host atlanır / “yok” mesajı verilir.
+If both exist, both sections are printed. If neither exists, the host is skipped / a “not found” message is shown.
 
-Salt-okunur; imaj silmez / prune yapmaz.
+Read-only; does not delete or prune images.
 
-## Host kapsamı (önemli)
+## Host scope (important)
 
-Envanter **yalnızca playbook’un çalıştığı host(lar)** içindir. Her node kendi imaj deposuna sahiptir; master’da görmek worker’dakileri göstermez. Tüm cluster için her node’u inventory’ye alıp `hosts: all` (veya uygun `--limit`) ile çalıştırın. Silme için aynı kural: [18_prune_unused_images](18_prune_unused_images.md).
+The inventory is **only for the host(s) the playbook runs on**. Each node has its own image store; seeing images on master does not show worker images. For the whole cluster, include every node in inventory and run with `hosts: all` (or an appropriate `--limit`). The same rule applies for deletion: [18_prune_unused_images](18_prune_unused_images.md).
 
-Ortak görev: [tasks/container_images_inventory.yml](../playbooks/tasks/container_images_inventory.yml)
+Shared task: [tasks/container_images_inventory.yml](../playbooks/tasks/container_images_inventory.yml)
 
-## 03 ile farkı
+## Difference from 03
 
-[03_check_docker_containers](03_check_docker_containers.md) container **süreçleri** ve port linkleridir.  
-**17** imaj **katmanı**dır: hangi imaj diskte, hangisi kullanımda, ne zaman gelmiş — prune / drift / disk doluluğu teşhisi için.
+[03_check_docker_containers](03_check_docker_containers.md) is about container **processes** and port links.  
+**17** is the image **layer**: which images are on disk, which are in use, when they arrived — for prune / drift / disk-full diagnosis.
 
-## Gereksinimler
+## Requirements
 
 - `hosts: all` (master, worker, singlenode, datanode…)
-- `become: true` (sudo) — crictl/containerd genelde root ister
-- Hedefte `python3` (rapor birleştirmesi için; modern Ubuntu’da varsayılan)
+- `become: true` (sudo) — crictl/containerd usually need root
+- `python3` on the target (for report assembly; default on modern Ubuntu)
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/17_check_container_images.yml
 
-# Sadece worker'lar:
+# Workers only:
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/17_check_container_images.yml --limit workers
 ```
 
-## Çoklu makine
+## Multi-host
 
-Her raporun başında:
+Each report starts with:
 
 ```text
-# HOST: <inventory adı/IP>
-# hostname: <sunucu hostname>
+# HOST: <inventory name/IP>
+# hostname: <server hostname>
 ```
 
-## Çıktı nasıl okunur?
+## How to read the output
 
-- **IN_USE=yes** üstte listelenir — canlı / yeni durmuş iş yükleri.
-- **IN_USE=no** → prune adayı; silmeden önce başka node’un aynı imajı kullanıp kullanmadığına bak (cluster-wide `kubectl get pods -A -o jsonpath='{..image}'` ayrı kontrol).
-- Aynı imajın birden fazla tag’i olabilir; id sütunu (`abcdef123456`) eşleştirmede yardımcı olur.
-- `<none>:<none>` / `<untagged>` → dangling imaj; genelde temizlenebilir.
-- CREATED_AT, “ne zaman pull/build edildi” ipucudur; her zaman registry push zamanı değildir.
+- **IN_USE=yes** is listed first — live / recently stopped workloads.
+- **IN_USE=no** → prune candidate; before deleting, check whether another node still uses the same image (separate cluster-wide `kubectl get pods -A -o jsonpath='{..image}'`).
+- The same image can have several tags; the id column (`abcdef123456`) helps matching.
+- `<none>:<none>` / `<untagged>` → dangling image; usually safe to clean.
+- CREATED_AT is a hint for “when it was pulled/built”; it is not always the registry push time.
 
-## Örnek (kısaltılmış)
+## Sample (shortened)
 
 ```text
 ################################################################################
@@ -85,23 +86,23 @@ IN_USE  CREATED_AT                SIZE        IMAGE
 ------  ------------------------  ----------  -----
 yes     2026-01-15 10:00:00 UTC   77.0MB      rancher/mirrored-metrics-server:v0.8.0  (7b9c9c4b9c)
 no      2025-06-01 08:00:00 UTC   120.0MB     old/unused:1.0  (aabbccddeeff)
-Özet: toplam=40 kullanımda=18 kullanılmıyor=22
+Summary: total=40 in_use=18 unused=22
 ```
 
-## Notlar
+## Notes
 
-- Çok imajlı host’ta `crictl inspecti` ile tarih toplama biraz sürebilir.
-- Rapor host-local’dir; cluster’ın tamamında “şu imaj bir yerde kullanılıyor mu?” sorusu için tüm node’larda 17 çalıştırıp `IN_USE` satırlarını birleştirmek gerekir.
+- Collecting dates with `crictl inspecti` can take a while on hosts with many images.
+- The report is host-local; to answer “is this image used anywhere in the cluster?” run 17 on every node and combine the `IN_USE` rows.
 
-## Kullanılmayanları silmek
+## Deleting unused images
 
-Aday listesi / silme: [18_prune_unused_images](18_prune_unused_images.md)
+Candidate list / delete: [18_prune_unused_images](18_prune_unused_images.md)
 
 ```bash
-# Sadece adaylar (silmez)
+# Candidates only (does not delete)
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/18_prune_unused_images.yml
 
-# Sil
+# Delete
 ansible-playbook -i inventories/cagatayuresincom/hosts.ini playbooks/18_prune_unused_images.yml \
   --extra-vars 'image_prune_confirm=true'
 ```

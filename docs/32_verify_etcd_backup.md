@@ -1,33 +1,34 @@
 ---
+lang: en
 title: "32 · verify_etcd_backup"
-parent: Playbook Kılavuzları
+parent: Playbook Guides
 nav_order: 32
 ---
 
-# 32_verify_etcd_backup.yml - Kullanım Kılavuzu
+# 32_verify_etcd_backup.yml - Usage Guide
 
 ![Conditional](https://img.shields.io/badge/State-Read--Only_Default-F59E0B?style=flat) ![etcd](https://img.shields.io/badge/Datastore-etcd-419EDA?style=flat)
 
-## Amaç
+## Purpose
 
-`/var/backups/etcd` altındaki en yeni snapshot'ı bulup yaş, boyut, SHA256 ve dosya izinlerini raporlar. `etcdutl` veya `etcdctl snapshot status` ile bütünlüğü doğrular. İsteğe bağlı restore testi yalnızca geçici bir dizine yapılır ve canlı etcd verisine dokunmaz.
+Finds the newest snapshot under `/var/backups/etcd` and reports its age, size, SHA256, and file permissions. Verifies integrity with `etcdutl` or `etcdctl snapshot status`. An optional restore test writes only to a temporary directory and does not touch live etcd data.
 
-## Gereksinimler
+## Requirements
 
-- İlk control-plane üzerinde `etcdutl` veya `etcdctl`
-- Yedek dizinine root erişimi
-- Snapshot adı `etcd_snapshot_*` kalıbıyla başlamalıdır
+- `etcdutl` or `etcdctl` on the first control-plane
+- Root access to the backup directory
+- Snapshot names must start with the `etcd_snapshot_*` pattern
 
-## Değişkenler
+## Variables
 
-| Değişken | Varsayılan | Açıklama |
+| Variable | Default | Description |
 |---|---|---|
-| `etcd_backup_directory` | `/var/backups/etcd` | Snapshot dizini |
-| `etcd_backup_max_age_hours` | `24` | Bundan eski yedek kritik kabul edilir |
-| `etcd_backup_restore_test` | `false` | İzole restore testi yapar |
-| `etcd_backup_verify_fail_on_error` | `true` | Kritik bulguda playbook'u başarısız yapar |
+| `etcd_backup_directory` | `/var/backups/etcd` | Snapshot directory |
+| `etcd_backup_max_age_hours` | `24` | Backups older than this are treated as critical |
+| `etcd_backup_restore_test` | `false` | Runs an isolated restore test |
+| `etcd_backup_verify_fail_on_error` | `true` | Fails the playbook on a critical finding |
 
-## Çalıştırma
+## How to run
 
 ```bash
 ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/32_verify_etcd_backup.yml
@@ -36,6 +37,6 @@ ansible-playbook -i inventories/musteri_a/hosts.ini playbooks/32_verify_etcd_bac
   --extra-vars 'etcd_backup_restore_test=true'
 ```
 
-Restore testi `mktemp` ile oluşturulan izole dizinde çalışır; canlı member dizini veya manifestler değiştirilmez.
+The restore test runs in an isolated directory created with `mktemp`; the live member directory and manifests are not changed.
 
-Resmi referans: [etcd Disaster Recovery](https://etcd.io/docs/v3.7/op-guide/recovery/)
+Official reference: [etcd Disaster Recovery](https://etcd.io/docs/v3.7/op-guide/recovery/)

@@ -1,7 +1,8 @@
 ---
 title: Ansible Playbooks
-description: Kubernetes cluster'ları ve sunucular için sağlık kontrolü, raporlama ve bakım amaçlı Ansible playbook koleksiyonu.
+description: Ansible playbook collection for Kubernetes and server health checks, reporting, and maintenance.
 repository: cagatayuresin/ansible-playbooks
+lang: en
 
 remote_theme: just-the-docs/just-the-docs@v0.12.0
 
@@ -39,15 +40,15 @@ heading_anchors: true
 enable_copy_code_button: true
 
 aux_links:
-  "GitHub deposu":
+  "GitHub repository":
     - "https://github.com/cagatayuresin/ansible-playbooks"
 aux_links_new_tab: true
 
 back_to_top: true
-back_to_top_text: "Başa dön"
+back_to_top_text: "Back to top"
 
 gh_edit_link: true
-gh_edit_link_text: "Bu sayfayı GitHub'da düzenle"
+gh_edit_link_text: "Edit this page on GitHub"
 gh_edit_repository: "https://github.com/cagatayuresin/ansible-playbooks"
 gh_edit_branch: main
 gh_edit_source: docs

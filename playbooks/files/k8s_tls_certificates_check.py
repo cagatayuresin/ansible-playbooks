@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Salt-okunur: K8s API/etcd certs + Ingress TLS domain/expiry report."""
+"""Read-only: K8s API/etcd certs + Ingress TLS domain/expiry report."""
 from __future__ import annotations
 
 import base64
@@ -51,7 +51,7 @@ def parse_openssl_dates(pem_or_path: str, is_path: bool = False) -> dict[str, An
         "error": None,
     }
     if not shutil.which("openssl"):
-        result["error"] = "openssl yok"
+        result["error"] = "openssl missing"
         return result
 
     if is_path:
@@ -119,33 +119,33 @@ def parse_openssl_dates(pem_or_path: str, is_path: bool = False) -> dict[str, An
 
 def severity(days: int | None) -> str:
     if days is None:
-        return "BILINMIYOR"
+        return "UNKNOWN"
     if days < 0:
-        return "SURESI_DOLMUS"
+        return "EXPIRED"
     if days <= 7:
-        return "KRITIK"
+        return "CRITICAL"
     if days <= 30:
-        return "UYARI"
+        return "WARNING"
     if days <= 90:
-        return "YAKLASIYOR"
+        return "APPROACHING"
     return "OK"
 
 
 def collect_kubeadm_certs() -> list[str]:
     lines = section("kubeadm certs check-expiration")
     if not shutil.which("kubeadm"):
-        lines.append("kubeadm yok — atlandı (muhtemelen k3s veya başka dağıtım).")
+        lines.append("kubeadm missing — skipped (likely k3s or another distribution).")
         return lines
     rc, out, err = run("kubeadm certs check-expiration")
     if rc == 0 and out:
         lines.append(out)
     else:
-        lines.append(err or "kubeadm certs check-expiration başarısız")
+        lines.append(err or "kubeadm certs check-expiration failed")
     return lines
 
 
 def collect_pki_files(paths: list[str]) -> list[str]:
-    lines = section("Control-plane PEM dosyaları (openssl)")
+    lines = section("Control-plane PEM files (openssl)")
     found_any = False
     rows = []
     for pattern_root in paths:
@@ -171,13 +171,13 @@ def collect_pki_files(paths: list[str]) -> list[str]:
 
     if not found_any:
         lines.append(
-            "Bilinen PKI dizinleri bulunamadı "
+            "Known PKI directories not found "
             "(/etc/kubernetes/pki, /var/lib/rancher/k3s/server/tls)."
         )
         return lines
 
     lines.append(
-        f"{'SEVIYE':<14} {'KALAN_GUN':>10}  {'BITIS':<22}  DOSYA"
+        f"{'LEVEL':<14} {'DAYS_LEFT':>10}  {'EXPIRES':<22}  FILE"
     )
     lines.append("-" * 110)
     rows.sort(
@@ -209,24 +209,24 @@ def kubectl_json(args: str) -> Any | None:
 
 
 def collect_ingress_tls() -> list[str]:
-    lines = section("Ingress TLS — domainler ve süreler")
+    lines = section("Ingress TLS — domains and expiry")
     rc, _, err = run("kubectl cluster-info")
     if rc != 0:
-        lines.append(f"kubectl erişimi yok: {err or 'cluster-info failed'}")
+        lines.append(f"kubectl access missing: {err or 'cluster-info failed'}")
         return lines
 
     data = kubectl_json("get ingress -A")
     if data is None:
-        lines.append("Ingress listesi alınamadı (CRD yok veya yetki yok).")
+        lines.append("Ingress list could not be retrieved (CRD missing or no permission).")
         return lines
 
     items = data.get("items") or []
     if not items:
-        lines.append("Cluster'da Ingress kaynağı yok.")
+        lines.append("No Ingress resource in the cluster.")
         return lines
 
     lines.append(
-        f"{'SEVIYE':<14} {'KALAN':>7}  {'BITIS':<22}  {'NS/INGRESS':<40}  DOMAINS / SECRET"
+        f"{'LEVEL':<14} {'LEFT':>7}  {'EXPIRES':<22}  {'NS/INGRESS':<40}  DOMAINS / SECRET"
     )
     lines.append("-" * 120)
 
@@ -246,13 +246,13 @@ def collect_ingress_tls() -> list[str]:
         if not tls_list:
             summaries.append(
                 {
-                    "sev": "TLS_YOK",
+                    "sev": "NO_TLS",
                     "days": None,
                     "bitis": "-",
                     "ref": f"{ns}/{name}",
-                    "hosts": hosts or ["(host yok)"],
+                    "hosts": hosts or ["(no host)"],
                     "secret": "-",
-                    "detail": "Ingress TLS bloğu tanımlı değil",
+                    "detail": "Ingress TLS block is not set",
                 }
             )
             continue
@@ -263,13 +263,13 @@ def collect_ingress_tls() -> list[str]:
             if not secret_name:
                 summaries.append(
                     {
-                        "sev": "SECRET_YOK",
+                        "sev": "NO_SECRET",
                         "days": None,
                         "bitis": "-",
                         "ref": f"{ns}/{name}",
                         "hosts": tls_hosts or hosts,
                         "secret": "-",
-                        "detail": "tls.secretName boş",
+                        "detail": "tls.secretName is empty",
                     }
                 )
                 continue
@@ -278,13 +278,13 @@ def collect_ingress_tls() -> list[str]:
             if not sec:
                 summaries.append(
                     {
-                        "sev": "SECRET_EKSIK",
+                        "sev": "SECRET_MISSING",
                         "days": None,
                         "bitis": "-",
                         "ref": f"{ns}/{name}",
                         "hosts": tls_hosts,
                         "secret": secret_name,
-                        "detail": "Secret bulunamadı",
+                        "detail": "Secret not found",
                     }
                 )
                 continue
@@ -294,13 +294,13 @@ def collect_ingress_tls() -> list[str]:
             if not crt_b64:
                 summaries.append(
                     {
-                        "sev": "CERT_YOK",
+                        "sev": "NO_CERT",
                         "days": None,
                         "bitis": "-",
                         "ref": f"{ns}/{name}",
                         "hosts": tls_hosts,
                         "secret": secret_name,
-                        "detail": "Secret içinde tls.crt yok",
+                        "detail": "tls.crt missing in Secret",
                     }
                 )
                 continue
@@ -309,7 +309,7 @@ def collect_ingress_tls() -> list[str]:
             except Exception as e:
                 summaries.append(
                     {
-                        "sev": "DECODE_HATA",
+                        "sev": "DECODE_ERROR",
                         "days": None,
                         "bitis": "-",
                         "ref": f"{ns}/{name}",
@@ -341,14 +341,14 @@ def collect_ingress_tls() -> list[str]:
 
     def sort_key(s):
         order = {
-            "SURESI_DOLMUS": 0,
-            "KRITIK": 1,
-            "UYARI": 2,
-            "YAKLASIYOR": 3,
-            "SECRET_EKSIK": 4,
-            "CERT_YOK": 4,
-            "SECRET_YOK": 5,
-            "TLS_YOK": 6,
+            "EXPIRED": 0,
+            "CRITICAL": 1,
+            "WARNING": 2,
+            "APPROACHING": 3,
+            "SECRET_MISSING": 4,
+            "NO_CERT": 4,
+            "NO_SECRET": 5,
+            "NO_TLS": 6,
             "OK": 7,
         }
         return (
@@ -377,31 +377,31 @@ def collect_ingress_tls() -> list[str]:
             lines.append(
                 f"{'':14} {'':7}  {'':22}  {'':40}  SAN: {', '.join(s['san'][:12])}"
             )
-        if s.get("detail") and s["sev"] not in ("OK", "YAKLASIYOR", "UYARI", "KRITIK", "SURESI_DOLMUS"):
+        if s.get("detail") and s["sev"] not in ("OK", "APPROACHING", "WARNING", "CRITICAL", "EXPIRED"):
             lines.append(
-                f"{'':14} {'':7}  {'':22}  {'':40}  not: {s['detail']}"
+                f"{'':14} {'':7}  {'':22}  {'':40}  note: {s['detail']}"
             )
 
     # counts
     from collections import Counter
 
     c = Counter(s["sev"] for s in summaries)
-    lines.append(f"Ingress özet: {dict(c)} | toplam_ingress_tls_kaydı={len(summaries)}")
+    lines.append(f"Ingress summary: {dict(c)} | total_ingress_tls_records={len(summaries)}")
     return lines
 
 
 def collect_cert_manager() -> list[str]:
-    lines = section("cert-manager Certificate kaynakları (varsa)")
+    lines = section("cert-manager Certificate resources (if present)")
     data = kubectl_json("get certificates.cert-manager.io -A")
     if data is None:
         # try short name
         data = kubectl_json("get certificate -A")
     if data is None:
-        lines.append("cert-manager Certificate CRD yok veya listelenemedi.")
+        lines.append("cert-manager Certificate CRD missing or could not be listed.")
         return lines
     items = data.get("items") or []
     if not items:
-        lines.append("Certificate kaynağı yok.")
+        lines.append("No Certificate resource.")
         return lines
 
     lines.append(
@@ -424,16 +424,16 @@ def collect_cert_manager() -> list[str]:
         lines.append(
             f"{ready:<8} {str(renew)[:22]:<22}  {ns + '/' + name:<40}  dns={', '.join(dns[:6])} secret={secret}"
         )
-    lines.append(f"Toplam Certificate: {len(items)}")
+    lines.append(f"Total Certificate: {len(items)}")
     return lines
 
 
 def collect_tls_secrets_scan() -> list[str]:
-    """Optional: all kubernetes-type secrets expiry (can be noisy). Summarize worst ones."""
-    lines = section("kubernetes.io/tls secret tarama (en kritik 25)")
+    """Optional: all kubernetes.io/tls secrets expiry (can be noisy). Summarize worst ones."""
+    lines = section("kubernetes.io/tls secret scan (top 25 most critical)")
     data = kubectl_json("get secrets -A --field-selector type=kubernetes.io/tls")
     if data is None:
-        lines.append("TLS secret listesi alınamadı.")
+        lines.append("TLS secret list could not be retrieved.")
         return lines
     items = data.get("items") or []
     parsed = []
@@ -467,8 +467,8 @@ def collect_tls_secrets_scan() -> list[str]:
             x["days"] if x["days"] is not None else 99999,
         )
     )
-    lines.append(f"Toplam TLS secret: {len(items)} | parse edilen: {len(parsed)}")
-    lines.append(f"{'SEVIYE':<14} {'KALAN':>7}  {'BITIS':<22}  SECRET  SAN")
+    lines.append(f"Total TLS secrets: {len(items)} | parsed: {len(parsed)}")
+    lines.append(f"{'LEVEL':<14} {'LEFT':>7}  {'EXPIRES':<22}  SECRET  SAN")
     lines.append("-" * 110)
     for p in parsed[:25]:
         san = ", ".join(p["san"][:5]) if p["san"] else "-"
@@ -477,13 +477,13 @@ def collect_tls_secrets_scan() -> list[str]:
             f"{str(p['bitis'])[:22]:<22}  {p['ref']}  {san}"
         )
     if len(parsed) > 25:
-        lines.append(f"... +{len(parsed) - 25} secret daha (en kritik 25 gösterildi)")
+        lines.append(f"... +{len(parsed) - 25} more secrets (top 25 most critical shown)")
     return lines
 
 
 def main() -> None:
     lines: list[str] = []
-    lines.append("TLS / Ingress / Kubernetes sertifika raporu (salt-okunur)")
+    lines.append("TLS / Ingress / Kubernetes certificate report (read-only)")
     lines.extend(collect_kubeadm_certs())
     lines.extend(
         collect_pki_files(
@@ -498,10 +498,10 @@ def main() -> None:
     lines.extend(collect_tls_secrets_scan())
     lines.append("")
     lines.append(
-        "Seviyeler: SURESI_DOLMUS (<0) | KRITIK (<=7g) | UYARI (<=30g) | "
-        "YAKLASIYOR (<=90g) | OK"
+        "Levels: EXPIRED (<0) | CRITICAL (<=7d) | WARNING (<=30d) | "
+        "APPROACHING (<=90d) | OK"
     )
-    lines.append("Detay: docs/21_check_tls_certificates.md")
+    lines.append("Details: docs/21_check_tls_certificates.md")
     print("\n".join(lines))
 
 

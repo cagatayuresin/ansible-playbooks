@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Salt-okunur: node conditions + capacity (requests/limits vs allocatable + top)."""
+"""Read-only: node conditions + capacity (requests/limits vs allocatable + top)."""
 from __future__ import annotations
 
 import json
@@ -69,17 +69,17 @@ def fmt_bytes(b: float) -> str:
 
 def main() -> None:
     lines: list[str] = []
-    lines.append("Node conditions + capacity raporu (salt-okunur)")
+    lines.append("Node conditions + capacity report (read-only)")
 
     rc, _, err = run("kubectl cluster-info")
     if rc != 0:
-        lines.append(f"kubectl erişimi yok: {err}")
+        lines.append(f"kubectl access missing: {err}")
         print("\n".join(lines))
         return
 
     rc, out, err = run("kubectl get nodes -o json")
     if rc != 0 or not out:
-        lines.append(f"nodes alınamadı: {err}")
+        lines.append(f"nodes could not be retrieved: {err}")
         print("\n".join(lines))
         return
     nodes = (json.loads(out).get("items") or [])
@@ -132,15 +132,15 @@ def main() -> None:
             if "node-role.kubernetes.io/" in k:
                 roles.append(k.split("/")[-1] or "master")
         role_s = ",".join(roles) if roles else "worker?"
-        press = ",".join(bad) if bad else "yok"
+        press = ",".join(bad) if bad else "none"
         lines.append(f"{name:<28} {ready:<8} {press:<40}  roles={role_s}")
         if ready != "True" or bad:
             not_ready.append(name)
 
     if not_ready:
-        lines.append(f"Dikkat gereken node'lar: {', '.join(not_ready)}")
+        lines.append(f"Nodes needing attention: {', '.join(not_ready)}")
     else:
-        lines.append("Tüm node'lar Ready ve pressure yok.")
+        lines.append("All nodes are Ready with no pressure.")
 
     # Capacity per node
     lines.extend(section("Capacity: allocatable vs requests/limits vs usage"))
@@ -193,15 +193,15 @@ def main() -> None:
         )
         warn = []
         if cpu_req_pct >= 90:
-            warn.append("CPU request yüksek")
+            warn.append("CPU request high")
         if mem_req_pct >= 90:
-            warn.append("MEM request yüksek")
+            warn.append("MEM request high")
         if top:
             try:
                 if float(str(use_cpu_pct).replace("%", "")) >= 85:
-                    warn.append("CPU usage yüksek")
+                    warn.append("CPU usage high")
                 if float(str(use_mem_pct).replace("%", "")) >= 85:
-                    warn.append("MEM usage yüksek")
+                    warn.append("MEM usage high")
             except Exception:
                 pass
         if warn:
@@ -209,15 +209,15 @@ def main() -> None:
 
     if not top_map:
         lines.append(
-            "Not: kubectl top nodes alınamadı (metrics-server?). Usage sütunu n/a — 14/15."
+            "Note: kubectl top nodes could not be retrieved (metrics-server?). Usage column n/a — 14/15."
         )
 
     lines.append("")
     lines.append(
-        "Yorum: req% = pod request toplamı / allocatable; lim% = limit toplamı / allocatable; "
-        "use = anlık metrics-server."
+        "Note: req% = sum of pod requests / allocatable; lim% = sum of limits / allocatable; "
+        "use = live metrics-server."
     )
-    lines.append("Detay: docs/24_check_node_capacity.md")
+    lines.append("Details: docs/24_check_node_capacity.md")
     print("\n".join(lines))
 
 

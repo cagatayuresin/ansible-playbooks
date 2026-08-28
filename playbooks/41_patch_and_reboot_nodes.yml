@@ -1,5 +1,5 @@
 ---
-- name: Linux ve Kubernetes Node Patch / Reboot Bakımı
+- name: Linux and Kubernetes Node Patch / Reboot Maintenance
   hosts: all
   serial: 1
   gather_facts: true
@@ -25,10 +25,10 @@
     is_single_node_cluster: "{{ inventory_hostname in (groups['singlenode'] | default([])) }}"
 
   pre_tasks:
-    - name: Ping pong bağlantı testi
+    - name: Ping connectivity test
       import_tasks: tasks/ping_pong.yml
 
-    - name: İlk control-plane üzerindeki k3s kubeconfig'i kontrol et
+    - name: Check k3s kubeconfig on the first control-plane
       become: true
       stat:
         path: /etc/rancher/k3s/k3s.yaml
@@ -38,7 +38,7 @@
       when: first_control_plane | length > 0
 
   tasks:
-    - name: Debian ailesinde bekleyen paket güncellemelerini listele
+    - name: List pending package updates on Debian family
       become: true
       shell: >-
         apt-get -s -o Debug::NoLocking=1 upgrade
@@ -51,7 +51,7 @@
       check_mode: false
       when: ansible_facts['os_family'] == 'Debian'
 
-    - name: RedHat ailesinde bekleyen paket güncellemelerini listele
+    - name: List pending package updates on RedHat family
       become: true
       command: dnf -q check-update
       register: node_dnf_updates
@@ -60,13 +60,13 @@
       check_mode: false
       when: ansible_facts['os_family'] == 'RedHat'
 
-    - name: Reboot gereksinimini kontrol et
+    - name: Check reboot requirement
       become: true
       stat:
         path: /var/run/reboot-required
       register: node_reboot_required_before
 
-    - name: RedHat ailesinde reboot gereksinimini kontrol et
+    - name: Check reboot requirement on RedHat family
       become: true
       command: needs-restarting -r
       register: node_redhat_reboot_before
@@ -75,7 +75,7 @@
       check_mode: false
       when: ansible_facts['os_family'] == 'RedHat'
 
-    - name: Güncelleme durumunu hesapla
+    - name: Compute update status
       set_fact:
         node_updates_available: >-
           {{
@@ -90,13 +90,13 @@
             )
           }}
 
-    - name: Node patch ve reboot ön raporu
+    - name: Node patch and reboot preview
       debug:
         msg:
           - "Host: {{ inventory_hostname }} (Kubernetes node: {{ is_kubernetes_node | bool }})"
-          - "Güncelleme var: {{ node_updates_available | bool }}"
+          - "Updates available: {{ node_updates_available | bool }}"
           - >-
-            Reboot gerekli: {{
+            Reboot required: {{
               (node_reboot_required_before.stat.exists | default(false))
               or
               (
@@ -104,14 +104,14 @@
                 and (node_redhat_reboot_before.rc | default(0) == 1)
               )
             }}
-          - "Patch onayı: {{ node_patch_confirm | bool }}, reboot onayı: {{ node_reboot_confirm | bool }}"
+          - "Patch confirm: {{ node_patch_confirm | bool }}, reboot confirm: {{ node_reboot_confirm | bool }}"
           - >-
             {{
               node_apt_updates.stdout_lines
               | default(node_dnf_updates.stdout_lines | default([]))
             }}
 
-    - name: Patch uygulanacak işletim sistemini doğrula
+    - name: Validate OS for patching
       assert:
         that:
           - ansible_facts['os_family'] in ['Debian', 'RedHat']
@@ -120,17 +120,17 @@
             not (is_single_node_cluster | bool)
             or (node_allow_single_node_maintenance | bool)
         fail_msg: >-
-          İşletim sistemi desteklenmiyor, control-plane bulunamadı veya singlenode
-          bakımına açık onay verilmedi.
+          Unsupported OS, control-plane not found, or single-node
+          maintenance was not explicitly confirmed.
       when: node_patch_confirm | bool
 
-    - name: Onaylı node bakım akışı
+    - name: Confirmed node maintenance flow
       when:
         - node_patch_confirm | bool
         - node_updates_available | bool
           or node_reboot_confirm | bool
       block:
-        - name: Kubernetes node'u drain et
+        - name: Drain Kubernetes node
           become: true
           environment:
             KUBECONFIG: >-
@@ -153,7 +153,7 @@
           changed_when: true
           when: is_kubernetes_node | bool
 
-        - name: Debian ailesinde tüm paketleri güncelle
+        - name: Upgrade all packages on Debian family
           become: true
           apt:
             update_cache: true
@@ -161,7 +161,7 @@
             upgrade: dist
           when: ansible_facts['os_family'] == 'Debian'
 
-        - name: RedHat ailesinde tüm paketleri güncelle
+        - name: Upgrade all packages on RedHat family
           become: true
           dnf:
             name: "*"
@@ -169,13 +169,13 @@
             update_only: true
           when: ansible_facts['os_family'] == 'RedHat'
 
-        - name: Güncelleme sonrası reboot gereksinimini kontrol et
+        - name: Check reboot requirement after updates
           become: true
           stat:
             path: /var/run/reboot-required
           register: node_reboot_required_after
 
-        - name: RedHat ailesinde güncelleme sonrası reboot gereksinimini kontrol et
+        - name: Check reboot requirement after updates on RedHat family
           become: true
           command: needs-restarting -r
           register: node_redhat_reboot_after
@@ -184,7 +184,7 @@
           check_mode: false
           when: ansible_facts['os_family'] == 'RedHat'
 
-        - name: Onaylı node reboot işlemini gerçekleştir
+        - name: Reboot node when confirmed
           become: true
           reboot:
             reboot_timeout: 900
@@ -200,7 +200,7 @@
                 and (node_redhat_reboot_after.rc | default(0) == 1)
               )
 
-        - name: Kubernetes node'u uncordon et
+        - name: Uncordon Kubernetes node
           become: true
           environment:
             KUBECONFIG: >-
@@ -219,7 +219,7 @@
           when: is_kubernetes_node | bool
 
       rescue:
-        - name: Hata sonrası Kubernetes node'u uncordon etmeyi dene
+        - name: Attempt to uncordon Kubernetes node after failure
           become: true
           environment:
             KUBECONFIG: >-
@@ -241,8 +241,8 @@
             - node_drain_result is defined
             - node_drain_result is not skipped
 
-        - name: Node bakım hatasını bildir
+        - name: Report node maintenance failure
           fail:
             msg: >-
-              {{ inventory_hostname }} bakım akışı başarısız oldu. Mümkünse
-              uncordon denendi; node ve workload durumunu manuel kontrol edin.
+              {{ inventory_hostname }} maintenance flow failed. Uncordon was
+              attempted if possible; check node and workload status manually.

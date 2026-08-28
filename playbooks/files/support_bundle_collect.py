@@ -116,9 +116,9 @@ def run_command(command: list[str]) -> tuple[int, str, float]:
             output += "\n--- STDERR ---\n" + result.stderr
         return result.returncode, output, time.monotonic() - started
     except FileNotFoundError:
-        return 127, f"Komut bulunamadı: {command[0]}\n", time.monotonic() - started
+        return 127, f"Command not found: {command[0]}\n", time.monotonic() - started
     except subprocess.TimeoutExpired as exc:
-        output = (exc.stdout or "") + "\nKomut 120 saniyede zaman aşımına uğradı.\n"
+        output = (exc.stdout or "") + "\nCommand timed out after 120 seconds.\n"
         return 124, output, time.monotonic() - started
 
 
@@ -131,7 +131,7 @@ def main() -> int:
     output = Path(args.output).expanduser().resolve()
     allowed_parents = (Path("/tmp").resolve(), Path("/var/tmp").resolve())
     if output.parent not in allowed_parents or output.suffixes[-2:] != [".tar", ".gz"]:
-        print("[ERROR] Output /tmp veya /var/tmp altında .tar.gz olmalıdır")
+        print("[ERROR] Output must be a .tar.gz under /tmp or /var/tmp")
         return 2
 
     metadata: dict[str, object] = {
@@ -139,7 +139,7 @@ def main() -> int:
         "redacted": args.redact,
         "hostname": os.uname().nodename,
         "commands": [],
-        "excluded_resources": ["Secret içerikleri", "ConfigMap içerikleri"],
+        "excluded_resources": ["Secret contents", "ConfigMap contents"],
     }
 
     with tempfile.TemporaryDirectory(prefix="ansible-support-") as temp_name:
@@ -167,8 +167,8 @@ def main() -> int:
             json.dumps(metadata, ensure_ascii=False, indent=2)
         )
         (workspace / "README.txt").write_text(
-            "Bu arşiv Kubernetes Secret/ConfigMap içeriklerini toplamaz.\n"
-            "Redaksiyon sezgiseldir; üçüncü tarafla paylaşmadan önce manuel inceleyin.\n"
+            "This archive does not collect Kubernetes Secret/ConfigMap contents.\n"
+            "Redaction is heuristic; review manually before sharing with a third party.\n"
         )
 
         output.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -177,11 +177,11 @@ def main() -> int:
                 archive.add(path, arcname=path.name, recursive=False)
         output.chmod(0o600)
 
-    print("SUPPORT BUNDLE TAMAMLANDI")
-    print(f"Arşiv: {output}")
-    print(f"Boyut: {output.stat().st_size} byte")
-    print(f"Redaksiyon: {'açık' if args.redact else 'kapalı'}")
-    print("Secret ve ConfigMap içerikleri toplanmadı.")
+    print("SUPPORT BUNDLE COMPLETED")
+    print(f"Archive: {output}")
+    print(f"Size: {output.stat().st_size} bytes")
+    print(f"Redaction: {'on' if args.redact else 'off'}")
+    print("Secret and ConfigMap contents were not collected.")
     return 0
 
 
