@@ -25,11 +25,13 @@
 
     - name: Cluster DNS / CoreDNS report
       debug:
-        msg:
-          - |
-            ################################################################################
-            # HOST: {{ inventory_hostname }}
-            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-            ################################################################################
-          - "{{ dns_report.stdout | default(dns_report.stderr | default('Failed to generate report')) }}"
+        msg: >-
+          {{
+            ['#' * 80,
+             '# HOST: ' ~ inventory_hostname,
+             '# hostname: ' ~ (ansible_facts['hostname'] | default('n/a')),
+             '#' * 80]
+            + (dns_report.stdout_lines
+               | default(dns_report.stderr_lines | default(['Failed to generate report'])))
+          }}
       when: inventory_hostname == first_control_plane

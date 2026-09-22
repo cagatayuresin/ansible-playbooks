@@ -25,11 +25,13 @@
 
     - name: Node conditions / capacity report
       debug:
-        msg:
-          - |
-            ################################################################################
-            # HOST: {{ inventory_hostname }}
-            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-            ################################################################################
-          - "{{ capacity_report.stdout | default(capacity_report.stderr | default('Report could not be generated')) }}"
+        msg: >-
+          {{
+            ['#' * 80,
+             '# HOST: ' ~ inventory_hostname,
+             '# hostname: ' ~ (ansible_facts['hostname'] | default('n/a')),
+             '#' * 80]
+            + (capacity_report.stdout_lines
+               | default(capacity_report.stderr_lines | default(['Report could not be generated'])))
+          }}
       when: inventory_hostname == first_control_plane

@@ -26,11 +26,13 @@
 
     - name: etcd / control-plane report
       debug:
-        msg:
-          - |
-            ################################################################################
-            # HOST: {{ inventory_hostname }}
-            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-            ################################################################################
-          - "{{ etcd_report.stdout | default(etcd_report.stderr | default('Report could not be generated')) }}"
+        msg: >-
+          {{
+            ['#' * 80,
+             '# HOST: ' ~ inventory_hostname,
+             '# hostname: ' ~ (ansible_facts['hostname'] | default('n/a')),
+             '#' * 80]
+            + (etcd_report.stdout_lines
+               | default(etcd_report.stderr_lines | default(['Report could not be generated'])))
+          }}
       when: inventory_hostname == first_control_plane

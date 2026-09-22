@@ -22,10 +22,12 @@
 
     - name: Storage / inode / PV report
       debug:
-        msg:
-          - |
-            ################################################################################
-            # HOST: {{ inventory_hostname }}
-            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-            ################################################################################
-          - "{{ storage_report.stdout | default(storage_report.stderr | default('Report could not be generated')) }}"
+        msg: >-
+          {{
+            ['#' * 80,
+             '# HOST: ' ~ inventory_hostname,
+             '# hostname: ' ~ (ansible_facts['hostname'] | default('n/a')),
+             '#' * 80]
+            + (storage_report.stdout_lines
+               | default(storage_report.stderr_lines | default(['Report could not be generated'])))
+          }}

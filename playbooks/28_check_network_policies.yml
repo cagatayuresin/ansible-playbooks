@@ -29,12 +29,14 @@
 
     - name: NetworkPolicy inventory report
       debug:
-        msg:
-          - |
-            ################################################################################
-            # HOST: {{ inventory_hostname }}
-            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-            # namespace: {{ netpol_namespace if (netpol_namespace | default('') | length) > 0 else 'ALL' }}
-            ################################################################################
-          - "{{ netpol_report.stdout | default(netpol_report.stderr | default('Failed to generate report')) }}"
+        msg: >-
+          {{
+            ['#' * 80,
+             '# HOST: ' ~ inventory_hostname,
+             '# hostname: ' ~ (ansible_facts['hostname'] | default('n/a')),
+             '# namespace: ' ~ (netpol_namespace if (netpol_namespace | default('') | length) > 0 else 'ALL'),
+             '#' * 80]
+            + (netpol_report.stdout_lines
+               | default(netpol_report.stderr_lines | default(['Failed to generate report'])))
+          }}
       when: inventory_hostname == first_control_plane

@@ -26,11 +26,13 @@
 
     - name: TLS / Ingress / K8s certificate report
       debug:
-        msg:
-          - |
-            ################################################################################
-            # HOST: {{ inventory_hostname }}
-            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-            ################################################################################
-          - "{{ tls_report.stdout | default(tls_report.stderr | default('Report could not be generated')) }}"
+        msg: >-
+          {{
+            ['#' * 80,
+             '# HOST: ' ~ inventory_hostname,
+             '# hostname: ' ~ (ansible_facts['hostname'] | default('n/a')),
+             '#' * 80]
+            + (tls_report.stdout_lines
+               | default(tls_report.stderr_lines | default(['Report could not be generated'])))
+          }}
       when: inventory_hostname == first_control_plane

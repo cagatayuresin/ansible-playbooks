@@ -34,13 +34,15 @@
 
     - name: Warning event report
       debug:
-        msg:
-          - |
-            ################################################################################
-            # HOST: {{ inventory_hostname }}
-            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-            # since_hours: {{ events_since_hours }} | limit: {{ events_limit }}
-            # namespace: {{ events_namespace if (events_namespace | default('') | length) > 0 else 'ALL' }}
-            ################################################################################
-          - "{{ events_report.stdout | default(events_report.stderr | default('Report could not be generated')) }}"
+        msg: >-
+          {{
+            ['#' * 80,
+             '# HOST: ' ~ inventory_hostname,
+             '# hostname: ' ~ (ansible_facts['hostname'] | default('n/a')),
+             '# since_hours: ' ~ events_since_hours ~ ' | limit: ' ~ events_limit,
+             '# namespace: ' ~ (events_namespace if (events_namespace | default('') | length) > 0 else 'ALL'),
+             '#' * 80]
+            + (events_report.stdout_lines
+               | default(events_report.stderr_lines | default(['Report could not be generated'])))
+          }}
       when: inventory_hostname == first_control_plane

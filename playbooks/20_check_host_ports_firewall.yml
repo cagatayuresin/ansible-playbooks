@@ -20,10 +20,12 @@
 
     - name: Port / firewall report
       debug:
-        msg:
-          - |
-            ################################################################################
-            # HOST: {{ inventory_hostname }}
-            # hostname: {{ ansible_facts['hostname'] | default('n/a') }}
-            ################################################################################
-          - "{{ ports_fw.stdout | default(ports_fw.stderr | default('Report could not be generated')) }}"
+        msg: >-
+          {{
+            ['#' * 80,
+             '# HOST: ' ~ inventory_hostname,
+             '# hostname: ' ~ (ansible_facts['hostname'] | default('n/a')),
+             '#' * 80]
+            + (ports_fw.stdout_lines
+               | default(ports_fw.stderr_lines | default(['Report could not be generated'])))
+          }}
