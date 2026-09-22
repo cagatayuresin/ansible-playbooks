@@ -29,5 +29,5 @@
 
     - name: Pod diagnostics report
       debug:
-        msg: "{{ pod_diagnostics_result.stdout | default(pod_diagnostics_result.stderr | default('Failed to generate report')) }}"
+        msg: "{{ pod_diagnostics_result.stdout_lines | default(pod_diagnostics_result.stderr_lines | default(['Failed to generate report'])) }}"
       when: inventory_hostname == first_control_plane

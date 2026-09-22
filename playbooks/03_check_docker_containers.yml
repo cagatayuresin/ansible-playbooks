@@ -22,7 +22,7 @@
 
     - name: "Display Docker containers status (When: Docker is installed and info can be retrieved)"
       debug:
-        msg: "{{ docker_ps_table.stdout }}"
+        msg: "{{ docker_ps_table.stdout_lines }}"
       when:
         - docker_installed.rc == 0
         - docker_ps_table.stdout is defined

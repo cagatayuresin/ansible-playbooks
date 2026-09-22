@@ -32,5 +32,5 @@
 
     - name: Service and EndpointSlice health report
       debug:
-        msg: "{{ service_endpoints_result.stdout | default(service_endpoints_result.stderr | default('Failed to generate report')) }}"
+        msg: "{{ service_endpoints_result.stdout_lines | default(service_endpoints_result.stderr_lines | default(['Failed to generate report'])) }}"
       when: inventory_hostname == first_control_plane

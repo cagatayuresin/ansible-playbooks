@@ -27,5 +27,5 @@
 
     - name: Workload resilience report
       debug:
-        msg: "{{ workload_resilience_result.stdout | default(workload_resilience_result.stderr | default('Failed to generate report')) }}"
+        msg: "{{ workload_resilience_result.stdout_lines | default(workload_resilience_result.stderr_lines | default(['Failed to generate report'])) }}"
       when: inventory_hostname == first_control_plane

@@ -37,7 +37,7 @@
 
     - name: etcd backup verification report
       debug:
-        msg: "{{ etcd_backup_verify_result.stdout | default(etcd_backup_verify_result.stderr | default('Failed to generate report')) }}"
+        msg: "{{ etcd_backup_verify_result.stdout_lines | default(etcd_backup_verify_result.stderr_lines | default(['Failed to generate report'])) }}"
       when: inventory_hostname == first_control_plane
 
     - name: Fail on invalid etcd backup

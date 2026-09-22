@@ -43,7 +43,7 @@
 
     - name: Node baseline collection error
       debug:
-        msg: "{{ node_baseline_raw.stderr | default(node_baseline_raw.stdout | default('Unknown error')) }}"
+        msg: "{{ node_baseline_raw.stderr_lines | default(node_baseline_raw.stdout_lines | default(['Unknown error'])) }}"
       when: node_baseline_raw.rc != 0
 
     - name: Per-host node baseline report

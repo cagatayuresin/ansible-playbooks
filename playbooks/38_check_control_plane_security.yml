@@ -22,7 +22,7 @@
 
     - name: Control-plane security report
       debug:
-        msg: "{{ control_plane_security_result.stdout | default(control_plane_security_result.stderr | default('Failed to generate report')) }}"
+        msg: "{{ control_plane_security_result.stdout_lines | default(control_plane_security_result.stderr_lines | default(['Failed to generate report'])) }}"
       when: inventory_hostname == first_control_plane
 
     - name: Fail on critical control-plane security findings

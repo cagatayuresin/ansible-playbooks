@@ -27,5 +27,5 @@
 
     - name: RBAC risk report
       debug:
-        msg: "{{ rbac_risks_result.stdout | default(rbac_risks_result.stderr | default('Failed to generate report')) }}"
+        msg: "{{ rbac_risks_result.stdout_lines | default(rbac_risks_result.stderr_lines | default(['Failed to generate report'])) }}"
       when: inventory_hostname == first_control_plane

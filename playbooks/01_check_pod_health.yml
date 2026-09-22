@@ -29,7 +29,7 @@
 
     - name: Display pod health status
       debug:
-        msg: "{{ pod_status.stdout }}"
+        msg: "{{ pod_status.stdout_lines }}"
       when:
         - kubectl_check.rc == 0
         - pod_status is defined

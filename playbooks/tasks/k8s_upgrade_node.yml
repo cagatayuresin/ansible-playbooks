@@ -93,7 +93,7 @@
 
     - name: kubeadm upgrade plan output
       debug:
-        msg: "{{ kubeadm_plan.stdout }}"
+        msg: "{{ kubeadm_plan.stdout_lines }}"
       when: inventory_hostname == first_control_plane
 
     - name: "kubeadm upgrade apply (When: must be the first control-plane node)"

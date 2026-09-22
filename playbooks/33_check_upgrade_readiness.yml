@@ -33,7 +33,7 @@
 
     - name: Kubernetes upgrade readiness report
       debug:
-        msg: "{{ upgrade_readiness_result.stdout | default(upgrade_readiness_result.stderr | default('Failed to generate report')) }}"
+        msg: "{{ upgrade_readiness_result.stdout_lines | default(upgrade_readiness_result.stderr_lines | default(['Failed to generate report'])) }}"
       when: inventory_hostname == first_control_plane
 
     - name: Fail if upgrade blockers are present

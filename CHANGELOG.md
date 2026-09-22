@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wider content, ordered navigation, search, and code-copy controls.
 
 ### Fixed
+- Reported command and script output line by line (`stdout_lines`) so multi-line reports no longer print as a single escaped string with literal `\n` / `\r\n` sequences.
 - Handled nullable EndpointSlice fields without crashing and stopped masking helper execution errors in playbook 35.
 - Made the etcd snapshot selection unit test deterministic across filesystems
   with coarse timestamp resolution.
