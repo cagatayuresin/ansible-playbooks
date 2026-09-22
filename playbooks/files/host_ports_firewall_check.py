@@ -20,7 +20,13 @@ def run(cmd: str, timeout: float = 30.0) -> tuple[int, str, str]:
             text=True,
             timeout=timeout,
         )
-        return p.returncode, (p.stdout or "").strip(), (p.stderr or "").strip()
+        # nft/iptables output contains tabs; expand them so the report stays
+        # readable when Ansible escapes control characters in debug output.
+        return (
+            p.returncode,
+            (p.stdout or "").expandtabs(4).strip(),
+            (p.stderr or "").expandtabs(4).strip(),
+        )
     except subprocess.TimeoutExpired:
         return 124, "", "timeout"
     except Exception as e:
